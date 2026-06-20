@@ -1,0 +1,13 @@
+{
+  "name": "rain-ai",
+  "owner": { "name": "Rainier", "email": "rschlek@users.noreply.github.com" },
+  "description": "A shareable Claude marketplace for getting set up: onboarding, system orientation, and device bootstrapping. The front door to a Claude-as-an-OS workflow.",
+  "plugins": [
+    {
+      "name": "start",
+      "source": "./plugins/start",
+      "description": "System onboarding and device setup: orientation to the harness and marketplace, a mental model of Claude-as-an-OS, and global/device bootstrapping (terminal, shared Claude settings). Per-capability setup stays in each capability's own plugin.",
+      "category": "productivity"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "start",
+  "description": "The front door. System-level onboarding and device setup that is orthogonal to any single capability: orientation to the harness and marketplace, a mental model of Claude-as-an-OS, and global/device bootstrapping (terminal, shared Claude settings). Capability-specific setup (e.g. cloning a knowledge base) stays in that capability's own plugin.",
+  "author": {
+    "name": "Rainier"
+  }
+}
