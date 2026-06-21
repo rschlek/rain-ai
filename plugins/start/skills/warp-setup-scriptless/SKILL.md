@@ -18,7 +18,8 @@ description: >-
 # Warp Setup (scriptless)
 
 Reach the **same end state** as the scripted `warp-setup`: Warp installed, the
-Claude tab configs and visual setup applied, Warp launched. The difference is
+Claude tab configs and visual setup applied, Warp launched - and finished by
+opening a Claude session in Warp from the `claude` tab config. The difference is
 **how**: this variant ships **no `.ps1`** and is fully model-driven. You treat the
 bundled assets as *desired state*, reconcile the on-disk config toward them with
 the Write tool, then **verify the artifact**. It is an A/B experiment against the
@@ -53,6 +54,13 @@ configs are the named entries in Warp's `+` (new-tab) menu:
   scripted original, which clobbers the file wholesale. Here you ensure **our**
   keys/sections are present at **our** values **and preserve any other
   keys/sections the user already had**. Don't blow away settings we don't manage.
+  **On conflict, our value WINS.** If a key we manage already exists on disk with a
+  different value - most importantly `default_tab_config_path`, which a
+  previously-configured Warp will already have pointing at some other tab -
+  **overwrite it with our value**. "Preserve" applies *only* to keys we do **not**
+  manage; the keys we manage are exactly those present in the asset. Getting this
+  wrong is the difference between Warp's default tab auto-running `claude` and it
+  opening a plain shell (see the verification gate).
 
 ### The one machine-specific value
 
@@ -88,6 +96,22 @@ flush. If Warp was already installed, it is already onboarded - **skip this gate
 **D. Quit -> reconcile -> relaunch.** Quit Warp so nothing can flush over your
 write, reconcile the config (next section) while Warp is stopped, then relaunch so
 a fresh start reads it. Quit/launch commands in [REFERENCE.md](REFERENCE.md).
+
+**E. Open the Claude session.** A launched Warp does **not** reliably honor
+`default_tab_config_path` for the window it opens - on a fresh install it opens
+Warp's built-in default (PowerShell), not the `claude` tab. So **do not rely on the
+settings file to produce a running Claude session.** After the step-D relaunch
+(give Warp ~3-5 s to be ready), explicitly open the `claude` tab config via Warp's
+URI handler - the reliable mechanism (it opens a new tab in the running Warp):
+
+```
+Start-Process "warp://tab_config/claude"          # macOS: open "warp://tab_config/claude"
+```
+
+This auto-runs `claude --chrome --dangerously-skip-permissions` from the
+`claude.toml` you wrote in step D, leaving a Claude session running at the end of
+setup. (The `default_*` settings keys still ship as the user's standing preference
+for *new* windows; this step is what guarantees the session is actually up now.)
 
 ## Reconcile (OS-agnostic, idempotent, convergent)
 
@@ -130,7 +154,13 @@ gotchas in. Check all four:
 1. **Our known settings landed.** Re-read `settings.toml`; confirm at least:
    `theme = "adeberry"`, `is_any_ai_enabled = false`,
    `default_session_mode = "tab_config"`, `[appearance.vertical_tabs] enabled =
-   true`, `zoom_level = 125`.
+   true`, `zoom_level = 125`, and that `default_tab_config_path` resolves to **this
+   machine's `claude.toml`** (token substituted to a real path, our value - **not**
+   a pre-existing user path the merge failed to overwrite). This is the user's
+   standing *preference* for new windows; do **not** rely on Warp honoring it to
+   auto-open Claude (a fresh launch opens Warp's built-in default instead) - the
+   running Claude session is delivered by step E's explicit tab-config open, not by
+   this value.
 2. **No BOM.** Warp's TOML parser chokes on a BOM. Read the first 3 bytes of
    `settings.toml` and assert they are **NOT** `239,187,191` (EF BB BF), e.g.:
 
@@ -162,9 +192,11 @@ Compose a precise ask with full context:
 When done, report across all steps: whether Warp was installed or already present
 (and by which method), whether you waited on the onboarding gate, the files
 written and that they **stuck** (the re-read + four checks confirm it), that
-pre-existing settings were preserved, and that Warp is running. Mention new tabs
-come from Warp's `+` menu, and that because you wrote config with Warp stopped,
-the visual setup is already applied on this launch - no further reload needed.
+pre-existing settings were preserved, that Warp is running, and that you opened a
+**Claude session** via the `claude` tab config (step E) - ask the user to confirm
+a `claude` tab appeared. Mention other tabs come from Warp's `+` menu, and that
+because you wrote config with Warp stopped, the visual setup is already applied on
+this launch - no further reload needed.
 
 ## Notes
 
