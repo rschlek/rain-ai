@@ -1,0 +1,7 @@
+{
+  "name": "productivity",
+  "description": "Portable, general-purpose productivity skills for any Claude Code workflow: open a fresh chat in a new tab (breakout), hand the conversation off to a new agent (handoff), and get a plan stress-tested through relentless interview (grill-me).",
+  "author": {
+    "name": "Rainier"
+  }
+}

@@ -8,6 +8,12 @@
       "source": "./plugins/start",
       "description": "System-level device setup: global/device bootstrapping such as the terminal and shared Claude settings. Per-capability setup stays in each capability's own plugin.",
       "category": "productivity"
+    },
+    {
+      "name": "productivity",
+      "source": "./plugins/productivity",
+      "description": "Portable, general-purpose productivity skills: breakout (open a fresh chat in a new tab), handoff (compact the conversation for a new agent), and grill-me (stress-test a plan by interview).",
+      "category": "productivity"
     }
   ]
 }
