@@ -1,11 +1,11 @@
-# Warp setup (scriptless) - install & clobber reference
+# Warp setup - install & clobber reference
 
-Operational detail for `warp-setup-scriptless`. SKILL.md owns the desired-state /
+Operational detail for `warp-setup`. SKILL.md owns the desired-state /
 reconcile / verify flow; this file holds the install commands and the
 clobber-window rationale that you run inline as harness commands (there is **no
-bundled script** - that is the whole point of this variant).
+bundled script**).
 
-## Why install is model-driven (it always was)
+## Why install is model-driven
 
 Install varies across machines and needs recovery, so you run the commands
 yourself: you own the harness timeout, can background a slow download and poll,
@@ -110,7 +110,7 @@ writing regardless. Do not abort the run.
   (macOS: `osascript -e 'quit app "Warp"'`.)
 
 `-ExecutionPolicy Bypass` is needed on machines at the default `Restricted`
-policy; it scopes only to that child process. (This variant ships no `.ps1`, but
+policy; it scopes only to that child process. (This skill ships no `.ps1`, but
 you still run inline `powershell -Command` snippets.)
 
 ## The clobber windows (why quit -> write -> relaunch)

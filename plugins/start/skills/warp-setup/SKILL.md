@@ -1,69 +1,27 @@
 ---
 name: warp-setup
 description: >-
-  Set up the Warp terminal on the current device with the user's standard setup:
-  install Warp if it is missing (you drive the install directly - direct download
-  on Windows, brew on macOS), apply the Claude tab configs AND the visual setup
-  (theme, fonts, zoom, sidebar - settings.toml via a script), then launch Warp.
-  Use when the user is setting up Warp on a new or reinstalled machine, or says
-  "set up warp", "install warp", "configure warp", "warp tab configs", "apply my
-  warp settings", or "warp-setup". Do NOT use to open a one-off throwaway chat
-  tab in Warp, or for unrelated terminal config.
+  Set up the Warp terminal on the current device with the user's standard setup -
+  install Warp if missing, apply the Claude tab configs AND the visual setup
+  (theme, fonts, zoom, sidebar via settings.toml), then launch Warp and open a
+  Claude session in the configured tab. It ships no bundled script: it reconciles
+  the on-disk config toward shipped desired-state assets with the Write tool, then
+  verifies the artifact. Use when the user is setting up Warp on a new or
+  reinstalled machine, or says "set up warp", "install warp", "configure warp",
+  "apply my warp settings", or "warp tab configs". Do NOT use to open a one-off
+  throwaway chat tab in Warp.
 ---
 
 # Warp Setup
 
-Set up the user's standard Warp on whatever device the session is running on, in
-one pass. Parts, **run in this order**
-(install -> launch -> onboarding gate -> config):
+Reach this **end state**: Warp installed, the Claude tab configs and visual setup
+applied, Warp launched - and finished by opening a Claude session in Warp from the
+`claude` tab config. The skill ships **no `.ps1`** and is fully model-driven: you
+treat the bundled assets as *desired state*, reconcile the on-disk config toward
+them with the Write tool, then **verify the artifact**. Make it genuinely
+converge - the verification gate is what proves it stuck.
 
-0. **Install** (you drive it - see "Install" below) - if Warp is missing, install
-   it. This step is **model-driven, not scripted**: you run the commands yourself
-   so you own the harness timeout, can run the download in the background, and can
-   recover or pick a different method when one stalls on a given machine.
-1. **Launch Warp** - the single deliberate launch; it initializes the profile and
-   must come before config (config written before the profile exists gets
-   clobbered - see step 4 in Procedure).
-2. **Onboarding gate** (fresh installs only) - after launch, the user clicks
-   through Warp's onboarding windows to reach the main view. **Completing
-   onboarding makes Warp flush its own in-memory settings to `settings.toml`**,
-   overwriting any config written earlier. So on a fresh install you **pause and
-   wait for the user to finish onboarding** before writing config. Already-onboarded
-   machines skip this (see step 3 in Procedure).
-3. **Config** (`apply-warp-config.ps1`) - written with Warp **stopped**, then a
-   relaunch reads it (quit -> write -> relaunch; see step 4):
-   - **Tab configs** - the named entries in Warp's `+` (new-tab) menu; each opens
-     a tab that auto-runs a command. Ships two (below). (These live in a separate
-     dir Warp's settings-flush never touches, so they are not at clobber risk.)
-   - **Visual setup** - `settings.toml`: theme, vertical-tabs sidebar, fonts,
-     zoom, editor toggles, default session mode.
-
-**Why install is model-driven but config is scripted.** Config is deterministic
-file-writing with footguns (UTF-8 *without* BOM - Warp rejects TOML with a BOM -
-plus a path-token substitution); a script does that reliably and a model should
-not improvise it. Install is the opposite: it varies across machines and needs
-recovery. In particular `winget install Warp.Warp` reliably **wedges at the
-download step** on at least one of the user's Windows machines (winget finds the
-package, prints "Downloading...", and hangs indefinitely - 25+ min, never lands).
-So the proven path below avoids `winget install` and downloads the installer
-directly. You have latitude to adapt per machine, but lead with the proven path.
-
-Warp does **not** require a sign-in - on a fresh install the user just clicks
-through a couple of onboarding windows to reach the main view. Warp **hot-reloads**
-`settings.toml`, so an edit shows up live - but do **not** rely on hot-reload to
-*persist* config: a running Warp also flushes its own in-memory settings back to
-`settings.toml` (notably the moment onboarding completes, and on exit), which
-overwrites a hot-reloaded write. The durable method is therefore to write config
-while Warp is **stopped** and let a fresh launch read it - see the Procedure.
-
-## The two tab configs
-
-| Tab name        | Command it runs                                              |
-| --------------- | ----------------------------------------------------------- |
-| `claude`        | `claude --chrome --dangerously-skip-permissions`            |
-| `claude-resume` | `claude --chrome --dangerously-skip-permissions --resume`   |
-
-## Assets (the source of truth)
+## The desired-state assets (data, not payload)
 
 ```
 warp-setup/assets/
@@ -73,212 +31,179 @@ warp-setup/assets/
     claude-resume.toml
 ```
 
-To change a command, theme, or any setting, edit the file in `assets/` -
-`apply-warp-config.ps1` copies/substitutes whatever is there. To add a tab
-config, drop another `.toml` into `assets/tab_configs/`.
+These are the **source of truth** for the target state - you read them and make
+the on-disk files match. Reference them as
+`${CLAUDE_PLUGIN_ROOT}/skills/warp-setup/assets/...`. The two tab
+configs are the named entries in Warp's `+` (new-tab) menu:
+
+| Tab name        | Command it runs                                              |
+| --------------- | ----------------------------------------------------------- |
+| `claude`        | `claude --chrome --dangerously-skip-permissions`            |
+| `claude-resume` | `claude --chrome --dangerously-skip-permissions --resume`   |
+
+### Replace-vs-merge semantics (read carefully - they differ per file)
+
+- **`tab_configs/*.toml` -> REPLACE verbatim.** Write each one byte-for-byte from
+  the asset. These live in a directory Warp's settings-flush **never touches**, so
+  there is no clobber risk and no merge needed.
+- **`settings.toml` -> MERGE.** Ensure **our** keys/sections are present at **our**
+  values **and preserve any other keys/sections the user already had**. Don't blow
+  away settings we don't manage.
+  **On conflict, our value WINS.** If a key we manage already exists on disk with a
+  different value - most importantly `default_tab_config_path`, which a
+  previously-configured Warp will already have pointing at some other tab -
+  **overwrite it with our value**. "Preserve" applies *only* to keys we do **not**
+  manage; the keys we manage are exactly those present in the asset. Getting this
+  wrong is the difference between Warp's default tab auto-running `claude` and it
+  opening a plain shell (see the verification gate).
 
 ### The one machine-specific value
 
-`settings.toml` is portable except `default_tab_config_path`, whose directory is
-the literal token `{{TAB_CONFIG_DIR}}`. At apply time the script does a plain
-string replace of that token with this machine's OS-correct tab_configs directory
-(no TOML parsing). Every other value ships as-is.
+`settings.toml` ships with `default_tab_config_path` pointing at the literal token
+`{{TAB_CONFIG_DIR}}`. At write time, do a **plain string replace** of that token
+with this machine's resolved `tab_configs` directory (below). No TOML parsing of
+our own values - just the string substitution. Every other value ships as-is.
 
-## Procedure
+## Order of operations
 
-You drive step 1 (install) with your own tool calls; step 2 launches Warp, step 3
-is a human gate on fresh installs, and step 4 writes config with Warp stopped then
-relaunches. **Order matters** - the profile must exist before config is written,
-and config must be the *last* write before a read-launch (see the clobber notes on
-steps 3 and 4). `-ExecutionPolicy Bypass` is needed on machines at the default
-`Restricted` policy (a bare `powershell -File ...` refuses to run the `.ps1`); it
-scopes only to that child process.
+Run in this order; **order is load-bearing** (see the clobber windows in
+[REFERENCE.md](REFERENCE.md)):
 
-1. **Ensure Warp is installed** (model-driven - see the per-OS "Install" section
-   below for the exact, proven commands). In short:
+**A. Install if missing** (model-driven, inline harness commands - **no script**).
+Detect by the known install path (Warp is not on PATH); install only if missing;
+warn-and-continue if you can't. Full proven commands - the Windows direct-download
+path with the winget-wedge workaround and `winget show` version discovery, plus
+macOS `brew install --cask warp` - are in [REFERENCE.md](REFERENCE.md). Remember
+whether this was a **fresh** install (onboarding pending -> gate C applies) or an
+**already-present** Warp (skip gate C).
 
-   - **Detect first.** Warp is installed iff its exe/app exists at the known path
-     (Warp is not on PATH): Windows `%LOCALAPPDATA%\Programs\Warp\warp.exe`; macOS
-     `/Applications/Warp.app`. If present, install nothing - go to step 2.
-   - **If missing, install it yourself** (do not shell out to a script for this):
-     Windows = direct download + silent install; macOS = `brew install --cask warp`.
-     The Windows install **auto-launches Warp and you close it** (install step 6) -
-     so after step 1 Warp is installed but not running.
-   - **Warn-and-continue.** If the install can't complete (no winget for version
-     discovery, no brew, download fails), say so clearly and still go to step 2 -
-     the config is worth writing regardless. Do not abort the run.
-   - **Remember which case you're in.** If Warp was *missing* and you just
-     installed it, this is a **fresh** profile - onboarding is pending, so the
-     step-3 gate applies. If Warp was *already present*, treat it as
-     already-onboarded and skip that gate.
+**B. Launch Warp** - the single deliberate launch; it must come **before** config
+so the profile exists (config written before the profile exists gets clobbered).
+Command in [REFERENCE.md](REFERENCE.md). Wait ~5 s for Warp to initialize.
 
-2. **Launch Warp** - the single deliberate launch, and it must come *before*
-   config:
+**C. Onboarding gate (fresh installs only).** If A just installed Warp, it is
+showing onboarding windows. **Tell the user to click through onboarding to the
+main terminal view, and wait for their explicit confirmation before continuing.**
+Completing onboarding makes Warp flush its in-memory settings to `settings.toml`,
+which would overwrite a config written earlier - waiting moves the write past that
+flush. If Warp was already installed, it is already onboarded - **skip this gate**.
 
-   ```
-   powershell -ExecutionPolicy Bypass -Command "Start-Process \"$env:LOCALAPPDATA\Programs\Warp\warp.exe\""
-   ```
+**D. Quit -> reconcile -> relaunch.** Quit Warp so nothing can flush over your
+write, reconcile the config (next section) while Warp is stopped, then relaunch so
+a fresh start reads it. Quit/launch commands in [REFERENCE.md](REFERENCE.md).
 
-   (macOS: `open -a Warp`.) Then **wait ~5 seconds** for Warp to initialize its
-   profile. If launch fails - e.g. the exe is not at the path because step 1 could
-   not install it - investigate rather than silently succeeding.
+**E. Open the Claude session.** A launched Warp does **not** reliably honor
+`default_tab_config_path` for the window it opens - on a fresh install it opens
+Warp's built-in default (PowerShell), not the `claude` tab. So **do not rely on the
+settings file to produce a running Claude session.** After the step-D relaunch
+(give Warp ~3-5 s to be ready), explicitly open the `claude` tab config via Warp's
+URI handler - the reliable mechanism (it opens a new tab in the running Warp):
 
-3. **Onboarding gate - fresh installs only.** If step 1 just installed Warp, the
-   profile is fresh and Warp is showing its onboarding windows. **Tell the user to
-   click through onboarding until they reach the main terminal view, and wait for
-   their explicit confirmation before continuing.** This step is load-bearing:
-   completing onboarding makes Warp flush its in-memory settings to `settings.toml`,
-   so any config written before the user finishes is silently overwritten. Waiting
-   moves the config write *past* that flush. If Warp was already installed (you
-   skipped the install in step 1), it is already onboarded - **skip this gate** and
-   go to step 4. (There is no reliable programmatic "onboarding done" signal - we
-   deliberately never read `warp.sqlite` - so asking the user is the honest check.)
+```
+Start-Process "warp://tab_config/claude"          # macOS: open "warp://tab_config/claude"
+```
 
-4. **Apply config with Warp stopped, then relaunch** (tab configs + visual setup -
-   this part stays scripted). Three moves, in order:
+This auto-runs `claude --chrome --dangerously-skip-permissions` from the
+`claude.toml` you wrote in step D, leaving a Claude session running at the end of
+setup. (The `default_*` settings keys still ship as the user's standing preference
+for *new* windows; this step is what guarantees the session is actually up now.)
 
-   a. **Quit Warp** so nothing can flush over your write
-      (macOS: `osascript -e 'quit app "Warp"'`):
+## Reconcile (OS-agnostic, idempotent, convergent)
 
-      ```
-      powershell -ExecutionPolicy Bypass -Command "Get-Process Warp -ErrorAction SilentlyContinue | Stop-Process -Force"
-      ```
+Do this with Warp **stopped** (step D), using the **Write tool** (it emits UTF-8
+**without BOM** - Warp's TOML parser chokes on a BOM, so this matters).
 
-   b. **Run the config script** while Warp is *not* running - your write is now the
-      last write to disk. It prints each file + target path:
+1. **Detect the OS** and **discover where Warp config actually lives by checking
+   the candidate paths** - do not blindly hardcode; check, then use what exists
+   (create dirs that are missing):
 
-      ```
-      powershell -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/skills/warp-setup/scripts/apply-warp-config.ps1
-      ```
+   | OS      | tab_configs dir                          | settings dir                      |
+   | ------- | ---------------------------------------- | --------------------------------- |
+   | Windows | `%APPDATA%\warp\Warp\data\tab_configs`   | `%LOCALAPPDATA%\warp\Warp\config` |
+   | macOS   | `~/.warp/tab_configs`                    | `~/.warp`                         |
 
-   c. **Relaunch Warp** - the profile is initialized, so Warp *reads* `settings.toml`
-      on startup instead of regenerating defaults (macOS: `open -a Warp`):
+   (Linux differs - `~/.config/warp-terminal/` - and is **not** separately
+   handled here. If you detect Linux, say so and stop.)
 
-      ```
-      powershell -ExecutionPolicy Bypass -Command "Start-Process \"$env:LOCALAPPDATA\Programs\Warp\warp.exe\""
-      ```
+2. **Tab configs (REPLACE):** Write `claude.toml` and `claude-resume.toml` into
+   the tab_configs dir, byte-for-byte from the assets.
 
-   **Why stopped, not hot-reloaded:** a fresh profile has *two* clobber windows -
-   the first launch initializing the internal store, and onboarding completion
-   flushing in-memory settings - and beyond those a running Warp can flush over a
-   hot-reloaded write at any time (including on exit). Writing while Warp is stopped
-   and letting a fresh launch read the file beats every one of those races. **Verify
-   it stuck:** re-read `settings.toml` and confirm known values landed (e.g.
-   `default_session_mode = "tab_config"`, `is_any_ai_enabled = false`,
-   `theme = "adeberry"`). If somehow clobbered, repeat a/b/c - it sticks once
-   onboarding is done.
+3. **settings.toml (MERGE):** **First read the existing on-disk `settings.toml`**
+   (if any) and keep it - you'll need it both to merge into and to prove you
+   didn't clobber. Produce a merged result where every key/section from our asset
+   is present at our value, the `{{TAB_CONFIG_DIR}}` token is replaced with this
+   machine's resolved tab_configs dir (plain string replace), **and** every
+   pre-existing user key/section that we don't manage is preserved. Write the
+   merged result.
 
-5. Report what happened across all steps: whether Warp was installed or already
-   present (and by which method), whether you waited on the onboarding gate, the
-   files written and that they stuck (the re-read confirms it), and that Warp is
-   running. Mention that new tabs come from Warp's `+` menu, and that - because you
-   wrote config with Warp stopped - the visual setup is already applied on this
-   launch with no further reload needed.
+**Bounded and convergent.** This is safe to re-run. If a check (below) fails,
+adjust and retry - but **cap at ~2-3 attempts** so it can't thrash. Re-running
+when already correct should change nothing.
 
-## Install (model-driven, per OS)
+## Verification gate (the load-bearing step)
 
-Run these yourself, step by step, reading output between calls. The download is
-~125 MB - give it a long timeout (or run it in the background and poll) rather
-than letting a 2-minute default kill it mid-download.
+After writing, **re-read the files from disk and assert on the ARTIFACT**, not the
+visual effect. A shallow "file exists" check is worse than none - fold the known
+gotchas in. Check all four:
 
-### Windows (proven path - avoids the winget download wedge)
-
-1. **Detect** - skip everything if it already exists:
-   `Test-Path "$env:LOCALAPPDATA\Programs\Warp\warp.exe"`.
-2. **Discover the latest version** with winget *metadata* (this does NOT wedge -
-   only `winget install`'s download does):
+1. **Our known settings landed.** Re-read `settings.toml`; confirm at least:
+   `theme = "adeberry"`, `is_any_ai_enabled = false`,
+   `default_session_mode = "tab_config"`, `[appearance.vertical_tabs] enabled =
+   true`, `zoom_level = 125`, and that `default_tab_config_path` resolves to **this
+   machine's `claude.toml`** (token substituted to a real path, our value - **not**
+   a pre-existing user path the merge failed to overwrite). This is the user's
+   standing *preference* for new windows; do **not** rely on Warp honoring it to
+   auto-open Claude (a fresh launch opens Warp's built-in default instead) - the
+   running Claude session is delivered by step E's explicit tab-config open, not by
+   this value.
+2. **No BOM.** Warp's TOML parser chokes on a BOM. Read the first 3 bytes of
+   `settings.toml` and assert they are **NOT** `239,187,191` (EF BB BF), e.g.:
 
    ```
-   winget show --id Warp.Warp --exact --disable-interactivity
+   powershell -Command "[System.IO.File]::ReadAllBytes('<settings.toml>')[0..2]"
    ```
 
-   Parse the `Version:` line (e.g. `v0.2026.06.03.09.49.stable_02`). If winget is
-   absent, fall back to the warp.dev download page or ask the user for the build.
-3. **Pick arch:** `$env:PROCESSOR_ARCHITECTURE` -> `ARM64` = `aarch64`, else
-   `x86_64`.
-4. **Download the installer directly** (this is what winget can't reliably do).
-   The versioned endpoint 302s to `releases.warp.dev/.../WarpSetup.exe` and serves
-   a real `application/octet-stream`:
+3. **Didn't clobber.** Compare against what you read **before** writing: every
+   user key/section that isn't ours must still be present in the merged file.
+4. **Tab configs match desired exactly.** Re-read both `.toml` files and confirm
+   they equal the assets byte-for-byte.
 
-   ```
-   curl.exe -sSL --max-time 600 -o "$env:LOCALAPPDATA\Temp\WarpSetup.exe" `
-     "https://app.warp.dev/download/windows?version=<VERSION>&arch=<ARCH>"
-   ```
+On a failed check, adjust and retry within the 2-3 attempt bound.
 
-   Sanity-check the size (>50 MB). A tiny file means you got an HTML page, not the
-   installer (e.g. the version param was missing - the bare URL returns HTTP 400).
-5. **Silent install** - it's an Inno Setup installer, per-user, no elevation:
+## Contextual human escalation
 
-   ```
-   Start-Process "$env:LOCALAPPDATA\Temp\WarpSetup.exe" `
-     -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
-   ```
+If a check **still fails** after the bounded retries, OR the situation is
+**ambiguous-and-destructive** (e.g. a conflicting existing `settings.toml` a merge
+can't safely reconcile), **STOP and ask the user** - never fail with a bare error.
+Compose a precise ask with full context:
 
-   Do **not** rely on `-Wait` to tell you it's done - this installer sometimes
-   blocks `-Wait` indefinitely even after the app is in place. Instead **poll for
-   `warp.exe` to appear** at the detect path (up to ~2 min), and treat that as
-   "installed."
-6. **Close the auto-launched Warp.** This installer's post-install `[Run]` entry
-   **auto-launches Warp even under `/VERYSILENT`** (it isn't flagged
-   `skipifsilent`, and there's no switch to suppress it). If you don't close it,
-   Warp pops open mid-setup while you're still working - confusing for the user.
-   So once `warp.exe` exists, wait a couple seconds and kill any running instance,
-   leaving the single deliberate launch for step 3:
+- what you wrote and **where** (resolved paths),
+- what the failing check shows (the actual bytes/values),
+- your best-guess cause,
+- the **specific** confirmation or command you need to proceed.
 
-   ```
-   Get-Process Warp -ErrorAction SilentlyContinue | Stop-Process -Force
-   ```
+## Report
 
-   (Killing it does **not** harm the install - verified.)
-7. **Verify** `warp.exe` exists at the detect path and no `Warp`/`WarpSetup`
-   process is left running. (Warp declares a `Microsoft.VCRedist.2015+.x64`
-   dependency; it is present on essentially all modern Windows machines - check
-   `HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64` if Warp won't
-   launch, and install it via winget/direct download only if genuinely missing.)
-
-You *may* try `winget install --id Warp.Warp --exact` if you want, but bound it
-(background + a few minutes) and fall back to the direct download above the moment
-it stalls at "Downloading..." - don't repeat the 25-minute wedge.
-
-### macOS
-
-If `/Applications/Warp.app` is missing and Homebrew is available:
-`brew install --cask warp`. If brew is absent, tell the user to install Warp from
-https://www.warp.dev/ (or `brew install --cask warp`) and continue to config.
+When done, report across all steps: whether Warp was installed or already present
+(and by which method), whether you waited on the onboarding gate, the files
+written and that they **stuck** (the re-read + four checks confirm it), that
+pre-existing settings were preserved, that Warp is running, and that you opened a
+**Claude session** via the `claude` tab config (step E) - ask the user to confirm
+a `claude` tab appeared. Mention other tabs come from Warp's `+` menu, and that
+because you wrote config with Warp stopped, the visual setup is already applied on
+this launch - no further reload needed.
 
 ## Notes
 
-- **Install (step 1) - model-driven, see the "Install" section above.**
-  - Detection is by the known install path, not PATH (Warp does not add itself to
-    PATH): Windows `%LOCALAPPDATA%\Programs\Warp\warp.exe`; macOS
-    `/Applications/Warp.app`. Install runs only when that path is missing.
-  - There is intentionally **no install script** - you run the commands so you own
-    the timeout/background behavior and can recover when a method stalls. This
-    flow - including the onboarding gate and the quit -> write -> relaunch config -
-    was last validated on a fresh Windows machine on 2026-06-19.
-  - `--id Warp.Warp --exact` (when using winget for metadata) is deliberate - a
-    bare `warp` can match `Cloudflare.Warp` (moniker "warp") or other warp*
-    packages. The Warp installer is per-user, so no elevation is needed.
-  - Known issue this design works around: `winget install Warp.Warp` wedges at its
-    download step on at least one of the user's Windows machines. The proven path
-    discovers the version via `winget show` but downloads the installer with
-    `curl` and runs it silently - which does not wedge.
-- **Where config files go.**
-  - Tab configs: Windows `%APPDATA%\warp\Warp\data\tab_configs\`; macOS
-    `~/.warp/tab_configs/`.
-  - settings.toml: Windows `%LOCALAPPDATA%\warp\Warp\config\`; macOS `~/.warp/`.
-  - `apply-warp-config.ps1` detects the OS and creates the directories if they do
-    not exist. (Linux paths differ - `~/.config/warp-terminal/` - and are not
-    separately handled.)
-- **Idempotent.** Re-running installs nothing if Warp is present (detection skips
-  it), skips the onboarding gate (an already-installed Warp is already onboarded),
-  and overwrites the on-disk config with the bundled versions via the same
-  quit -> write -> relaunch - safe on every new device or after a Warp reinstall.
-- **Encoding matters.** All config files are written as UTF-8 without BOM; Warp
-  fails to parse TOML that carries a BOM. `apply-warp-config.ps1` handles this -
-  which is exactly why config stays scripted rather than model-driven.
 - **Privacy.** `warp.sqlite` (account email, command history, session) is never
   read or written. Nothing sensitive lives in the shipped assets once the path
   token is substituted.
-- These are the *standing* tab configs, distinct from any throwaway,
-  self-deleting tab config a separate skill might use to spawn a one-off new chat.
+- **Idempotent.** Re-running installs nothing if Warp is present, skips the
+  onboarding gate (already-installed Warp is already onboarded), and reconciles
+  the on-disk config back to desired state - safe on every new device or after a
+  Warp reinstall.
+- These are the *standing* tab configs, distinct from any throwaway, self-deleting
+  tab config a separate skill might use to spawn a one-off new chat.
+- The install and clobber-window knowledge lives as prose in
+  [REFERENCE.md](REFERENCE.md), which you run inline as harness commands - there is
+  no bundled script.
