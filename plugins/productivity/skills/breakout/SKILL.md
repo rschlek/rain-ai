@@ -1,21 +1,26 @@
 ---
 name: breakout
 description: >-
-  Open a fresh Claude Code chat in a new terminal tab (or window), optionally
-  seeded with a starting prompt, while the current session keeps running
-  untouched. Use when the user wants to "break out" into a new chat - to start a
-  clean session, or to continue work in a fresh context with a seed prompt
-  ("breakout", "open a new chat", "start a fresh chat in a new tab", "move this
-  into a new tab", "/handoff then breakout"). Do NOT use to delegate background
-  work you need a result back from (that is a subagent), or to capture a task.
+  Open a fresh Claude Code chat in a new Warp tab, optionally seeded with a
+  starting prompt, while the current session keeps running untouched. Use when
+  the user wants to "break out" into a new chat - to start a clean session, or to
+  continue work in a fresh context with a seed prompt ("breakout", "open a new
+  chat", "start a fresh chat in a new tab", "move this into a new tab", "/handoff
+  then breakout"). Do NOT use to delegate background work you need a result back
+  from (that is a subagent), or to capture a task.
 ---
 
 # Breakout
 
-Open a new, independent Claude Code chat in a fresh terminal tab, optionally
+Open a new, independent Claude Code chat in a fresh **Warp tab**, optionally
 seeded with a starting prompt. The current session is never paused. Use it
-directly to start a fresh chat, or after a handoff to continue work in a clean
+directly to start a clean chat, or after a handoff to continue work in a fresh
 context.
+
+This skill is **Warp-only** and **model-driven** - it ships **no script**. You
+detect the OS, write a throwaway Warp tab config with the Write tool, and fire
+Warp's tab-config URI - the same mechanism `warp-setup` uses, adapted at run time
+to whatever OS Warp is running on.
 
 ## Why a new session, not a subagent
 
@@ -23,64 +28,90 @@ A subagent runs autonomously and returns a result to the orchestrator - the user
 cannot converse with it. A real, talk-to-it chat only exists as a new `claude`
 session. Breakout launches one.
 
-## Quick start
+## Why Warp, why no script
 
-- "breakout" (no prompt) -> a fresh `claude` chat opens in a new tab.
-- "/handoff then breakout" -> compose the continuation prompt, pass it as the
-  seed; the new chat opens already primed to continue the work.
+A new tab *in the current terminal* is only reachable through that terminal's own
+mechanism. Warp exposes one: the `warp://tab_config/<name>` URI opens a new tab
+running a config file you drop in Warp's `tab_configs` dir. That URI behaves the
+same on every OS Warp supports - only the config directory and the "open a URI"
+command differ, which you resolve at run time. So breakout needs no bundled
+launcher; it is a few inline steps you run with the harness and the Write tool.
+If the user is not on Warp, this skill does not apply - say so and stop.
 
-## How to launch
+## Steps
 
-Run the bundled launcher (it handles the downstream quoting and the Warp/window
-choice). **How you pass the seed matters** - pick by the seed:
+**1. Resolve the OS specifics.** Detect the OS and use the matching row (the
+paths are the same ones `warp-setup` writes to):
 
-**Rich seed (anything beyond a trivial one-liner) -> `-SeedFile`.** Write the
-prompt to a temp file and pass only the path. The content never transits a
-command line, so embedded `"` quotes, newlines, `$`, and backticks all survive
-regardless of caller shell. This is the robust default for a real kickoff prompt:
+| OS      | tab_configs dir                        | open-URI command                              | new tab's shell      |
+| ------- | -------------------------------------- | --------------------------------------------- | -------------------- |
+| Windows | `%APPDATA%\warp\Warp\data\tab_configs` | `Start-Process "warp://tab_config/breakout"`  | PowerShell           |
+| macOS   | `~/.warp/tab_configs`                  | `open "warp://tab_config/breakout"`           | login shell (zsh)    |
+| Linux   | verify Warp's data dir (e.g. under `~/.local/state/warp-terminal/` or `~/.config/warp-terminal/`) | `xdg-open "warp://tab_config/breakout"` | login shell |
 
+Create the tab_configs dir if it is missing. If Warp clearly is not installed,
+stop and tell the user - this skill is Warp-only.
+
+**2. Resolve claude args.** Default `--chrome --dangerously-skip-permissions`
+(matches the user's standing Warp tab configs). Drop
+`--dangerously-skip-permissions` to keep tool-permission prompts in the new chat,
+drop `--chrome` to skip Chrome, or set the args wholesale on request.
+
+**3. Prepare the seed (if any).** Collapse the seed to a single line. For
+anything beyond a trivial one-liner, write it to a temp file with the Write tool
+and have the new tab read it - the seed then never transits a command line, so
+quotes / `$` / backticks survive regardless of shell.
+
+**4. Compose the command the new tab runs.** It must first **delete the throwaway
+config** - Warp has already read it, so this is race-free and leaves no lingering
+`breakout` entry in the `+` menu - then run claude with the args and seed.
+Templates (substitute real paths; `<cfg>` = the tab config from step 5, `<seed>`
+= the temp file from step 3):
+
+- bash / zsh:
+  ```
+  rm -f '<cfg>'; S="$(cat '<seed>')"; rm -f '<seed>'; claude <args> "$S"
+  ```
+- PowerShell:
+  ```
+  Remove-Item -LiteralPath '<cfg>' -EA SilentlyContinue; $S = Get-Content -Raw -LiteralPath '<seed>'; Remove-Item -LiteralPath '<seed>' -EA SilentlyContinue; claude <args> $S
+  ```
+
+With no seed, drop the `$S` / `S=` parts and just delete `<cfg>` then run
+`claude <args>`.
+
+**5. Write the tab config** with the Write tool (UTF-8, **no BOM** - Warp's TOML
+parser chokes on a BOM; the Write tool emits no BOM, so just use it). Write
+`<tab_configs>/breakout.toml`:
+
+```toml
+name = "breakout"
+
+[[panes]]
+id = "main"
+type = "terminal"
+commands = ["<the step-4 command>"]
 ```
-# 1. Write the composed seed to a temp file (use the Write tool, no escaping needed).
-# 2. Launch with its path:
-powershell -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/skills/breakout/scripts/breakout.ps1 -SeedFile <path-to-seed.txt>
-```
 
-**Already in a PowerShell session -> here-string + a direct call.** A here-string
-assigned to a variable passes as one native argument (no re-tokenization):
+The `commands` entry is a TOML basic string: escape `\` as `\\` and `"` as `\"`
+inside it. Writing the file directly (not through a shell) means that is the only
+escaping you do.
 
-```
-$seed = @'
-<prompt - any quotes / newlines are safe>
-'@
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-& ${CLAUDE_PLUGIN_ROOT}/skills/breakout/scripts/breakout.ps1 -Seed $seed
-```
+**6. Fire the URI** with the row's open command. Warp opens the new tab, which
+deletes its own config and starts claude.
 
-**Trivial one-liner with no embedded quotes -> inline `-Seed` is fine:**
+**7. Confirm.** You cannot see the new tab - ask the user what opened.
 
-```
-powershell -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/skills/breakout/scripts/breakout.ps1 -Seed "<short prompt, or omit for an empty fresh chat>"
-```
+## Seed quoting caveats
 
-> Avoid inline `-Seed "..."` for a prompt that contains double quotes: `powershell
-> -File ... -Seed "..."` re-tokenizes the command line *before* the launcher's
-> parameter binder runs, so a seed fragment can bind to `-Method` (the launch
-> fails loudly) or the seed silently truncates. Use `-SeedFile` or the here-string
-> form instead.
-
-`-ExecutionPolicy Bypass` is required: on a machine whose PowerShell execution
-policy is the default `Restricted` (common on personal/non-managed Windows), a
-bare `powershell -File ...` refuses to run the `.ps1`. The flag scopes only to
-this one child process - it changes nothing persistently.
-
-- **Default (auto):** opens a new **Warp tab** in the current window if Warp is
-  present (writes a tab config and fires `warp://tab_config/breakout`); otherwise
-  falls back to a new terminal **window**. Force one with `-Method warp|window`.
-- **Claude args default to `--chrome --dangerously-skip-permissions`.** Pass
-  `-Normal` to keep tool-permission prompts in the new chat, `-NoChrome` to drop
-  Chrome, or `-ClaudeArgs "..."` to set them wholesale.
-- New Warp tabs inherit the current tab's working directory, so a handoff that
-  continues work lands in the same project for free.
+- bash / zsh `"$(cat file)"` passes the file content as one argument verbatim -
+  robust for any characters.
+- PowerShell 5.1 does **not** escape interior `"` when calling a native exe, so a
+  seed containing a literal `"` can split into extra args (claude then trips on a
+  stray token like `unknown option`). `pwsh` (7+) handles it correctly. If you
+  must pass a `"`-containing seed under 5.1, double each run of backslashes before
+  a `"` and add one more (CommandLineToArgvW rule) so the quote survives. Composed
+  kickoff prompts rarely need literal `"` - prefer avoiding them.
 
 ## Composing the seed (when continuing work)
 
@@ -92,21 +123,18 @@ transcript.
 
 ## For other skills
 
-Sibling skills compose their own seed and call the same launcher. For a real
-kickoff prompt, pass it via `-SeedFile` (write the seed to a temp file, hand over
-the path) - robust against any quotes or newlines in the prompt; reserve inline
-`-Seed` for trivial one-liners. Breakout owns only the mechanism (where/how the
-new chat opens); the caller owns what the prompt says.
+Sibling skills compose their own seed and run these same steps (write the seed
+file, write the tab config, fire the URI). Breakout owns only the mechanism (a
+new Warp tab); the caller owns what the prompt says.
 
 ## Notes
 
-- The launch method is the single knob: Warp tab by default, new window on
-  request. No per-terminal detection - that is the seam where other terminals
-  get added later.
-- A new tab in the *current* terminal is only reachable through that terminal's
-  own mechanism (here, Warp's `tab_config` URI). A generic spawn yields a new
-  window; that is the fallback, by design.
-- The generated Warp tab config is self-deleting: the new tab removes it as its
-  first command, so no `breakout` entry lingers in the Warp `+` menu (it only
-  flickers in for the moment between launch and the tab starting). The launcher
-  cannot see the new tab, so confirm with the user what opened.
+- The throwaway `breakout.toml` is distinct from warp-setup's standing
+  `claude.toml` / `claude-resume.toml` in the same dir. It self-deletes, so no
+  `breakout` entry lingers in the Warp `+` menu (it only flickers in for the
+  moment between launch and the tab starting).
+- New Warp tabs inherit the current tab's working directory, so a handoff that
+  continues work lands in the same project for free.
+- This skill assumes the user's Warp setup (see `warp-setup`). It does not detect
+  or support other terminals - a different terminal needs its own mechanism, the
+  seam where support could be added later.
