@@ -41,7 +41,7 @@ Add this marketplace, then install the plugin:
 /plugin install start@rain-ai
 ```
 
-Then run `start:onboard` for the lay of the land.
+Then run `start:warp-setup` to bootstrap your terminal.
 
 ## Develop
 

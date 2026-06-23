@@ -51,7 +51,7 @@ bump.** Just commit and push.
 Skills are discovered **one level deep** under a plugin's `skills/`; you cannot
 nest skill folders. To group related skills with their own references as a
 liftable unit, give them their own plugin. A skill's invocation name is
-`<plugin>:<skill-dir>` — e.g. `start:onboard`.
+`<plugin>:<skill-dir>` — e.g. `start:warp-setup`.
 
 ## Add a NEW skill
 1. `git pull`.

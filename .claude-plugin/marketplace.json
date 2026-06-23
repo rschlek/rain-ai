@@ -6,7 +6,7 @@
     {
       "name": "start",
       "source": "./plugins/start",
-      "description": "System onboarding and device setup: orientation to the harness and marketplace, a mental model of Claude-as-an-OS, and global/device bootstrapping (terminal, shared Claude settings). Per-capability setup stays in each capability's own plugin.",
+      "description": "System-level device setup: global/device bootstrapping such as the terminal and shared Claude settings. Per-capability setup stays in each capability's own plugin.",
       "category": "productivity"
     }
   ]
