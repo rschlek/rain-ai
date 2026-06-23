@@ -2,8 +2,8 @@
 
 Guidance for any Claude session working in this repo. **rain-ai** is a
 **public, shareable** Claude plugin marketplace whose job is getting people and
-machines *set up*: onboarding, system orientation, and device bootstrapping.
-It is the front door to a Claude-as-an-OS workflow.
+machines *set up*: device bootstrapping and the global settings every other
+plugin builds on. It is the front door to a Claude-as-an-OS workflow.
 
 This repo is deliberately separate from any private/work marketplace. Keep it
 that way: **nothing private, personal-identifying, or work-specific (e.g. an
@@ -12,17 +12,17 @@ config, the *portable* skill lives here and the private values live elsewhere.
 
 ## What goes here vs. elsewhere (the seam)
 
-`start` owns **system-level** setup — whatever is true for the *whole machine
-regardless of which plugins you use*: terminal, harness, global Claude settings,
-orientation. **Capability-specific** setup lives in that capability's *own*
-plugin, in its own marketplace.
+`start` owns **system-level** setup - whatever is true for the *whole machine
+regardless of which plugins you use*: terminal, harness, global Claude settings.
+**Capability-specific** setup lives in that capability's *own* plugin, in its
+own marketplace.
 
 Litmus test for a setup step: **"Would this still be needed if the user only
-ever used one *other* plugin?"** Yes → system-level → it belongs in `start`.
-No → it belongs to the capability, not here.
+ever used one *other* plugin?"** Yes -> system-level -> it belongs in `start`.
+No -> it belongs to the capability, not here.
 
-Guard against `start` becoming a junk drawer: it is device bootstrapping +
-system orientation, not a home for general utilities.
+Guard against `start` becoming a junk drawer: it is device bootstrapping, not a
+home for general utilities.
 
 ## How publishing actually works (read this once)
 
@@ -38,20 +38,21 @@ SHA, so every push is automatically a new version. **There is no version to
 bump.** Just commit and push.
 
 ## Layout
-- `.claude-plugin/marketplace.json` — catalog listing every plugin.
-- `plugins/<plugin>/skills/` — LIVE skills (auto-discovered, one level deep).
+- `.claude-plugin/marketplace.json` - catalog listing every plugin.
+- `plugins/<plugin>/skills/` - LIVE skills (auto-discovered, one level deep).
   Each plugin is self-contained: its own `.claude-plugin/plugin.json`,
   `skills/`, and any `references/`.
-  - `plugins/start/` — system onboarding and device setup (default plugin).
-- `skill-template/` — starting point for a new skill (copy it).
-- `wip/` — gitignored scratchpad for unfinished skills. Never shipped, never
+  - `plugins/start/` - system-level device setup (default plugin): `warp-setup`
+    (terminal) and `claude-code-setup` (global Claude Code settings baseline).
+- `skill-template/` - starting point for a new skill (copy it).
+- `wip/` - gitignored scratchpad for unfinished skills. Never shipped, never
   committed. Move a folder out to `plugins/<plugin>/skills/` when it is ready.
-- `scripts/validate.py` — pre-commit sanity check (valid JSON + frontmatter).
+- `scripts/validate.py` - pre-commit sanity check (valid JSON + frontmatter).
 
 Skills are discovered **one level deep** under a plugin's `skills/`; you cannot
 nest skill folders. To group related skills with their own references as a
 liftable unit, give them their own plugin. A skill's invocation name is
-`<plugin>:<skill-dir>` — e.g. `start:warp-setup`.
+`<plugin>:<skill-dir>` - e.g. `start:warp-setup`.
 
 ## Add a NEW skill
 1. `git pull`.
@@ -73,7 +74,7 @@ Delete its directory under the plugin's `skills/`, commit, push.
   work; a publish commit must contain only what you are publishing.
 - Run `validate.py` before every commit.
 - `git pull` before authoring. This repo may be edited from multiple machines;
-  git is how they stay in sync — pull first, push when done.
+  git is how they stay in sync - pull first, push when done.
 - **Public repo.** No private, personal-identifying, or work-specific content.
   Keep skills portable (no cross-plugin or absolute-path assumptions).
 
