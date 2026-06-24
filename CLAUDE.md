@@ -43,7 +43,8 @@ bump.** Just commit and push.
   Each plugin is self-contained: its own `.claude-plugin/plugin.json`,
   `skills/`, and any `references/`.
   - `plugins/start/` - system-level device setup (default plugin): `warp-setup`
-    (terminal) and `claude-code-setup` (global Claude Code settings baseline).
+    (terminal), `claude-code-setup` (global Claude Code settings baseline), and
+    `codex-cli-setup` (Codex CLI device settings: the `hooks` feature flag).
 - `wip/` - gitignored scratchpad for unfinished skills. Never shipped, never
   committed. Move a folder out to `plugins/<plugin>/skills/` when it is ready.
 - `scripts/validate.py` - pre-commit sanity check (valid JSON + frontmatter).
