@@ -1,0 +1,8 @@
+# Obsidian config - the brain doubles as an Obsidian vault, and the shared *viewing* posture
+# (strict line breaks so hard-wrapped pages flow, reading-view default, delete confirmation,
+# raw/ excluded from graph + search) is meant to travel with the brain so it looks the same on
+# every device - editing stays the brrain skills' job, never a manual edit. So track the config
+# and ignore only the per-device, churny pieces (window/pane layout + caches).
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache

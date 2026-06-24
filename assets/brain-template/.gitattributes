@@ -1,0 +1,4 @@
+# The brain is plain-markdown authored by the brrain skills (LF). Force LF in the
+# repo so Windows checkouts don't show phantom CRLF diffs and no skill can commit
+# a line-ending-only flip. Applies on the next add/renormalize.
+* text=auto eol=lf
