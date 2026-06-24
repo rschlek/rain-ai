@@ -105,13 +105,37 @@ writing regardless. Do not abort the run.
 - **Launch (Windows):**
   `powershell -ExecutionPolicy Bypass -Command "Start-Process \"$env:LOCALAPPDATA\Programs\Warp\warp.exe\""`
   (macOS: `open -a Warp`.) Wait ~5 s after launch for Warp to initialize.
-- **Quit (Windows):**
+- **Quit (Windows) - ONLY after the self-host guard below clears:**
   `powershell -ExecutionPolicy Bypass -Command "Get-Process Warp -ErrorAction SilentlyContinue | Stop-Process -Force"`
   (macOS: `osascript -e 'quit app "Warp"'`.)
 
 `-ExecutionPolicy Bypass` is needed on machines at the default `Restricted`
 policy; it scopes only to that child process. (This skill ships no `.ps1`, but
 you still run inline `powershell -Command` snippets.)
+
+## Self-host guard (never quit the Warp you are running in)
+
+The quit above is **forbidden when this session is hosted inside the very Warp it
+would kill** - e.g. you re-ran this skill from a `claude` or `codex` Warp tab.
+`Stop-Process -Force` on Warp tears down the terminal mid-skill. **Always check
+self-host before quitting** (SKILL.md step D); treat *either* positive signal as
+self-host:
+
+- **Env signal (cheapest, verified):** Warp sets `TERM_PROGRAM=WarpTerminal` in the
+  shell it spawns, inherited by the agent process. So
+  `$env:TERM_PROGRAM -eq 'WarpTerminal'` -> you are inside Warp. (Do not rely on
+  `TERM_PROGRAM_VERSION` - it can be empty.)
+- **Process-chain signal (corroborating):** walk this process's ancestor chain; a
+  `warp.exe` (Windows) / Warp (macOS) ancestor means you are inside Warp, e.g.
+
+  ```
+  powershell -Command "$p=Get-CimInstance Win32_Process -Filter \"ProcessId=$PID\"; for($i=0;$i -lt 8 -and $p;$i++){ if($p.Name -eq 'warp.exe'){'self-host'; break}; $p=Get-CimInstance Win32_Process -Filter \"ProcessId=$($p.ParentProcessId)\" -EA SilentlyContinue }"
+  ```
+
+When self-hosted, **do not run the quit** - take SKILL.md step D's self-host branch
+(write tab configs live, reconcile `settings.toml` live with the durability caveat,
+skip the quit/relaunch; step E still runs). The clean quit->write->relaunch path is
+only for sessions that are NOT inside the target Warp.
 
 ## The clobber windows (why quit -> write -> relaunch)
 
@@ -127,6 +151,13 @@ and beyond those a running Warp can flush over a hot-reloaded write at any time
 (including on exit). So write config while Warp is **stopped** and let a fresh
 launch read it - that beats every one of those races. This is why the order is
 launch -> onboarding gate -> **quit** -> write -> relaunch.
+
+**Self-host caveat.** This quit->write->relaunch assumes you *can* quit Warp. When
+the session runs **inside** Warp you cannot (it would kill your terminal - see the
+self-host guard above). There the tab-config writes still persist (that directory is
+never flushed), but the `settings.toml` write only persists durably after a later
+full quit+relaunch the user performs with no in-Warp agent session running (or a
+re-run of this skill from a non-Warp terminal).
 
 There is no reliable programmatic "onboarding done" signal - we deliberately
 never read `warp.sqlite` (account email, command history, session) - so on a

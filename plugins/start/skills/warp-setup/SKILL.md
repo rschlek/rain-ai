@@ -132,9 +132,27 @@ Completing onboarding makes Warp flush its in-memory settings to `settings.toml`
 which would overwrite a config written earlier - waiting moves the write past that
 flush. If Warp was already installed, it is already onboarded - **skip this gate**.
 
-**D. Quit -> reconcile -> relaunch.** Quit Warp so nothing can flush over your
-write, reconcile the config (next section) while Warp is stopped, then relaunch so
-a fresh start reads it. Quit/launch commands in [REFERENCE.md](REFERENCE.md).
+**D. Reconcile - quit first, but NEVER kill your own host.** The clean path is
+quit Warp -> reconcile while stopped -> relaunch, so nothing can flush over your
+write. But **before quitting, check whether THIS session is running inside the very
+Warp you would quit** (the self-host case - common when you re-run this skill from a
+`claude`/`codex` Warp tab; `Stop-Process` on Warp would tear down the terminal you
+are running in, mid-skill). Detect it (see [REFERENCE.md](REFERENCE.md) - the
+`TERM_PROGRAM=WarpTerminal` env signal plus the Warp parent-process chain), then
+branch:
+
+- **Not inside Warp** (a non-Warp terminal, or a fresh install where the agent runs
+  elsewhere) -> do the clean path: quit Warp, reconcile (next section) while
+  stopped, relaunch. Quit/launch commands in [REFERENCE.md](REFERENCE.md).
+- **Inside Warp (self-host)** -> **do NOT quit.** Write the tab configs live - they
+  carry zero clobber risk (Warp never flushes that directory), so they persist
+  immediately. Reconcile `settings.toml` live too (Warp hot-reloads it, so the
+  visual setup applies now and the merge is non-destructive), but it is the one part
+  that needs Warp stopped to persist *durably*, which you cannot guarantee from
+  inside Warp. So **tell the user plainly**: to make the visual settings durable they
+  must fully quit and relaunch Warp once when no agent session is hosted inside it -
+  or re-run this skill from a non-Warp terminal (Windows Terminal / PowerShell /
+  VS Code) for the clean quit. Then continue to step E (which works either way).
 
 **E. Open the chosen scope's session(s).** A launched Warp does **not** reliably
 honor `default_tab_config_path` for the window it opens - on a fresh install it
@@ -161,8 +179,11 @@ windows; this step is what guarantees the session(s) are actually up now.)
 
 ## Reconcile (OS-agnostic, idempotent, convergent)
 
-Do this with Warp **stopped** (step D), using the **Write tool** (it emits UTF-8
-**without BOM** - Warp's TOML parser chokes on a BOM, so this matters).
+Do this with Warp **stopped** on the clean path (step D); on the self-host branch
+Warp stays running and you write **live** (tab configs persist regardless;
+`settings.toml` applies via hot-reload and is durable only after a later
+quit+relaunch). Either way use the **Write tool** (it emits UTF-8 **without BOM** -
+Warp's TOML parser chokes on a BOM, so this matters).
 
 1. **Detect the OS** and **discover where Warp config actually lives by checking
    the candidate paths** - do not blindly hardcode; check, then use what exists
@@ -246,9 +267,13 @@ you waited on the onboarding gate, the files written and that they **stuck** (th
 re-read + four checks confirm it), that pre-existing settings were preserved, that
 Warp is running, and that you opened a **session for each chosen agent** via its tab
 config (step E) - ask the user to confirm those tabs appeared. Mention the
-scope's tab configs are available from Warp's `+` menu, and that because you wrote
-config with Warp stopped, the visual setup is already applied on this launch - no
-further reload needed.
+scope's tab configs are available from Warp's `+` menu. State which step-D path you
+took: on the **clean path** (wrote config with Warp stopped) the visual setup is
+already applied on this launch, no further reload needed; on the **self-host branch**
+(wrote live because this session runs inside Warp) say so plainly - the tab configs
+persisted and the visual setup is showing via hot-reload, but a one-time full
+quit+relaunch with no agent session inside Warp (or a re-run from a non-Warp
+terminal) is what makes the visual settings durable.
 
 ## Notes
 
