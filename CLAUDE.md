@@ -44,7 +44,6 @@ bump.** Just commit and push.
   `skills/`, and any `references/`.
   - `plugins/start/` - system-level device setup (default plugin): `warp-setup`
     (terminal) and `claude-code-setup` (global Claude Code settings baseline).
-- `skill-template/` - starting point for a new skill (copy it).
 - `wip/` - gitignored scratchpad for unfinished skills. Never shipped, never
   committed. Move a folder out to `plugins/<plugin>/skills/` when it is ready.
 - `scripts/validate.py` - pre-commit sanity check (valid JSON + frontmatter).
@@ -54,10 +53,14 @@ nest skill folders. To group related skills with their own references as a
 liftable unit, give them their own plugin. A skill's invocation name is
 `<plugin>:<skill-dir>` - e.g. `start:warp-setup`.
 
-## Add a NEW skill
+## Add (publish) a skill
+Skills are authored and proven in a private dev marketplace; this repo is the
+curated public storefront, so a skill arrives here by being **promoted**, not
+drafted from scratch.
 1. `git pull`.
-2. Copy `skill-template/` to `plugins/<plugin>/skills/<name>/` and write it.
-   (Draft it under `wip/` first if you want it out of the tree until ready.)
+2. Place the skill at `plugins/<plugin>/skills/<name>/` (its `SKILL.md` plus any
+   assets), stripped of any private/work-specific content and made portable.
+   (Stage it under `wip/` first if you want it out of the tree until ready.)
 3. `python scripts/validate.py`.
 4. Commit **just that skill's paths** (not `git add -A`), then push.
 
