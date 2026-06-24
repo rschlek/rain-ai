@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh\"",
+            "command_windows": "cmd /c \"${CLAUDE_PLUGIN_ROOT}\\scripts\\inject-index.cmd\""
+          }
+        ]
+      }
+    ]
+  }
+}

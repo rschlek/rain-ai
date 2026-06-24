@@ -14,6 +14,12 @@
       "source": "./plugins/productivity",
       "description": "Portable, general-purpose productivity skills: breakout (open a fresh chat in a new tab), handoff (compact the conversation for a new agent), and grill-me (stress-test a plan by interview).",
       "category": "productivity"
+    },
+    {
+      "name": "brrain",
+      "source": "./plugins/brrain",
+      "description": "Second-brain knowledge loop over a local-first brrain knowledge base: device setup, provenance-tagged capture, trust-gated synthesis into canonical wiki pages, read-back, and consistency audit.",
+      "category": "productivity"
     }
   ]
 }

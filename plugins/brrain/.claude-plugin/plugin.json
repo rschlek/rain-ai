@@ -1,0 +1,7 @@
+{
+  "name": "brrain",
+  "description": "The user's second brain (brrain): the full park-and-link knowledge loop. setup creates or connects a brain per device; remember captures provenance-tagged notes; refine synthesizes the inbox into canonical wiki pages at the trust gate; recall reads them back; interview hunts knowledge gaps and elicits answers to fill them; audit lints the canonical pages for inconsistency.",
+  "author": {
+    "name": "Rainier"
+  }
+}
