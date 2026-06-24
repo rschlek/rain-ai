@@ -2,11 +2,12 @@
 name: warp-setup
 description: >-
   Set up the Warp terminal on the current device with the user's standard setup -
-  install Warp if missing, apply the Claude tab configs AND the visual setup
-  (theme, fonts, zoom, sidebar via settings.toml), then launch Warp and open a
-  Claude session in the configured tab. It ships no bundled script: it reconciles
-  the on-disk config toward shipped desired-state assets with the Write tool, then
-  verifies the artifact. Use when the user is setting up Warp on a new or
+  first ask whether to set up for Claude Code or Codex, then install Warp if
+  missing, apply BOTH agents' tab configs AND the visual setup (theme, fonts, zoom,
+  sidebar via settings.toml) with the chosen agent as the default tab, then launch
+  Warp and open a session for the chosen agent. It ships no bundled script: it
+  reconciles the on-disk config toward shipped desired-state assets with the Write
+  tool, then verifies the artifact. Use when the user is setting up Warp on a new or
   reinstalled machine, or says "set up warp", "install warp", "configure warp",
   "apply my warp settings", or "warp tab configs". Do NOT use to open a one-off
   throwaway chat tab in Warp.
@@ -14,32 +15,65 @@ description: >-
 
 # Warp Setup
 
-Reach this **end state**: Warp installed, the Claude tab configs and visual setup
-applied, Warp launched - and finished by opening a Claude session in Warp from the
-`claude` tab config. The skill ships **no `.ps1`** and is fully model-driven: you
-treat the bundled assets as *desired state*, reconcile the on-disk config toward
-them with the Write tool, then **verify the artifact**. Make it genuinely
-converge - the verification gate is what proves it stuck.
+Reach this **end state**: Warp installed, the **chosen scope's** tab configs
+(Claude, Codex, or both) and the visual setup applied, the chosen default tab set in
+Warp, Warp launched - and finished by opening a session for each chosen agent in
+Warp from its tab config. The skill ships **no `.ps1`** and is fully model-driven:
+you treat the bundled assets as *desired state*, reconcile the on-disk config toward
+them with the Write tool, then **verify the artifact**. Make it genuinely converge -
+the verification gate is what proves it stuck.
+
+## Choose the scope (do this first)
+
+Before anything else, **ask the user which agent(s) to set up** - present three
+choices: **Claude Code**, **Codex**, or **Both**. Their answer is the **chosen
+scope** for this run and it drives everything downstream - which tab configs get
+written, which one is Warp's default tab, and which session(s) you open at the end:
+
+| Choice      | Tab configs written                  | Default tab   | Session(s) opened in step E                      |
+| ----------- | ------------------------------------ | ------------- | ------------------------------------------------ |
+| Claude Code | `claude.toml`, `claude-resume.toml`  | `claude.toml` | `warp://tab_config/claude`                       |
+| Codex       | `codex.toml`, `codex-resume.toml`    | `codex.toml`  | `warp://tab_config/codex`                        |
+| Both        | all four                             | `claude.toml` | `warp://tab_config/claude` **and** `.../codex`   |
+
+- You write **only** the tab configs for the chosen scope. Picking Claude Code does
+  not write Codex tabs, and vice versa; "Both" writes all four. Any *other* agent's
+  tabs already on disk from a prior run are **left untouched** (not removed) - you
+  reconcile what you manage, you don't garbage-collect.
+- `default_tab_config_path` takes a **single** value, so for **Both** Claude is the
+  default new-tab (the primary); the Codex tab is still one click away in Warp's `+`
+  menu.
+- Carry the chosen scope through reconcile (the `{{DEFAULT_TAB_CONFIG_PATH}}` value
+  and which tabs you write), the verification gate, and step E.
 
 ## The desired-state assets (data, not payload)
 
 ```
 warp-setup/assets/
-  settings.toml              # visual setup; carries the {{TAB_CONFIG_DIR}} token
+  settings.toml              # visual setup; carries the {{TAB_CONFIG_DIR}}
+                             #   and {{DEFAULT_TAB_CONFIG}} tokens
   tab_configs/
     claude.toml
     claude-resume.toml
+    codex.toml
+    codex-resume.toml
 ```
 
 These are the **source of truth** for the target state - you read them and make
 the on-disk files match. Reference them as
-`${CLAUDE_PLUGIN_ROOT}/skills/warp-setup/assets/...`. The two tab
+`${CLAUDE_PLUGIN_ROOT}/skills/warp-setup/assets/...`. The four tab
 configs are the named entries in Warp's `+` (new-tab) menu:
 
 | Tab name        | Command it runs                                              |
 | --------------- | ----------------------------------------------------------- |
 | `claude`        | `claude --chrome --dangerously-skip-permissions`            |
 | `claude-resume` | `claude --chrome --dangerously-skip-permissions --resume`   |
+| `codex`         | `codex --yolo`                                              |
+| `codex-resume`  | `codex resume --yolo`                                       |
+
+(`--yolo` is Codex's auto-approve / sandbox-bypass flag - the counterpart to
+Claude's `--dangerously-skip-permissions`. Codex has no `--chrome` equivalent, so
+its tabs omit it.)
 
 ### Replace-vs-merge semantics (read carefully - they differ per file)
 
@@ -57,12 +91,22 @@ configs are the named entries in Warp's `+` (new-tab) menu:
   wrong is the difference between Warp's default tab auto-running `claude` and it
   opening a plain shell (see the verification gate).
 
-### The one machine-specific value
+### The substituted value
 
-`settings.toml` ships with `default_tab_config_path` pointing at the literal token
-`{{TAB_CONFIG_DIR}}`. At write time, do a **plain string replace** of that token
-with this machine's resolved `tab_configs` directory (below). No TOML parsing of
-our own values - just the string substitution. Every other value ships as-is.
+`settings.toml` ships with `default_tab_config_path` carrying one literal token:
+`{{DEFAULT_TAB_CONFIG_PATH}}`. At write time, do a **plain string replace** of it
+with the **full, OS-native path** to the chosen scope's default tab config - this
+machine's resolved `tab_configs` directory (below) joined to the chosen filename
+**using the OS's own separator** (`\` on Windows, `/` on macOS):
+
+- Claude Code -> `<tab_configs>\claude.toml` (Windows) or `<tab_configs>/claude.toml` (macOS)
+- Codex -> `<tab_configs>\codex.toml` or `<tab_configs>/codex.toml`
+- Both -> the Claude path (Claude is the default new-tab)
+
+Build it with the native separator so the path matches what Warp itself writes
+(Warp normalizes to the OS separator on flush; emitting it that way up front avoids
+a mixed-separator path). No TOML parsing of our own values - just the one string
+substitution. Every other value ships as-is.
 
 ## Order of operations
 
@@ -92,21 +136,28 @@ flush. If Warp was already installed, it is already onboarded - **skip this gate
 write, reconcile the config (next section) while Warp is stopped, then relaunch so
 a fresh start reads it. Quit/launch commands in [REFERENCE.md](REFERENCE.md).
 
-**E. Open the Claude session.** A launched Warp does **not** reliably honor
-`default_tab_config_path` for the window it opens - on a fresh install it opens
-Warp's built-in default (PowerShell), not the `claude` tab. So **do not rely on the
-settings file to produce a running Claude session.** After the step-D relaunch
-(give Warp ~3-5 s to be ready), explicitly open the `claude` tab config via Warp's
-URI handler - the reliable mechanism (it opens a new tab in the running Warp):
+**E. Open the chosen scope's session(s).** A launched Warp does **not** reliably
+honor `default_tab_config_path` for the window it opens - on a fresh install it
+opens Warp's built-in default (PowerShell), not the chosen tab. So **do not rely on
+the settings file to produce a running session.** After the step-D relaunch (give
+Warp ~3-5 s to be ready), explicitly open the chosen scope's tab config(s) via
+Warp's URI handler - the reliable mechanism (it opens a new tab in the running
+Warp). Open the URI for **each** agent in scope - one for Claude Code, one for
+Codex, **both** for Both:
 
 ```
+# Claude Code:
 Start-Process "warp://tab_config/claude"          # macOS: open "warp://tab_config/claude"
+# Codex:
+Start-Process "warp://tab_config/codex"           # macOS: open "warp://tab_config/codex"
+# Both: run both lines (give the first a beat before the second so each lands its own tab)
 ```
 
-This auto-runs `claude --chrome --dangerously-skip-permissions` from the
-`claude.toml` you wrote in step D, leaving a Claude session running at the end of
-setup. (The `default_*` settings keys still ship as the user's standing preference
-for *new* windows; this step is what guarantees the session is actually up now.)
+This auto-runs each chosen tab's command (`claude --chrome
+--dangerously-skip-permissions`, or `codex --yolo`) from the `.toml` you wrote in
+step D, leaving a running session for each chosen agent at the end of setup. (The
+`default_*` settings keys still ship as the user's standing preference for *new*
+windows; this step is what guarantees the session(s) are actually up now.)
 
 ## Reconcile (OS-agnostic, idempotent, convergent)
 
@@ -125,16 +176,19 @@ Do this with Warp **stopped** (step D), using the **Write tool** (it emits UTF-8
    (Linux differs - `~/.config/warp-terminal/` - and is **not** separately
    handled here. If you detect Linux, say so and stop.)
 
-2. **Tab configs (REPLACE):** Write `claude.toml` and `claude-resume.toml` into
-   the tab_configs dir, byte-for-byte from the assets.
+2. **Tab configs (REPLACE):** Write the tab configs **for the chosen scope** into
+   the tab_configs dir, byte-for-byte from the assets - the `claude.toml` +
+   `claude-resume.toml` pair for Claude Code, the `codex.toml` + `codex-resume.toml`
+   pair for Codex, or all four for Both. Any *other* agent's tabs already on disk
+   are left untouched, not deleted.
 
 3. **settings.toml (MERGE):** **First read the existing on-disk `settings.toml`**
    (if any) and keep it - you'll need it both to merge into and to prove you
    didn't clobber. Produce a merged result where every key/section from our asset
-   is present at our value, the `{{TAB_CONFIG_DIR}}` token is replaced with this
-   machine's resolved tab_configs dir (plain string replace), **and** every
-   pre-existing user key/section that we don't manage is preserved. Write the
-   merged result.
+   is present at our value, the `{{DEFAULT_TAB_CONFIG_PATH}}` token is replaced with
+   the chosen scope's full OS-native default-tab path (the section above, built with
+   the native separator), **and** every pre-existing user key/section that we don't
+   manage is preserved. Write the merged result.
 
 **Bounded and convergent.** This is safe to re-run. If a check (below) fails,
 adjust and retry - but **cap at ~2-3 attempts** so it can't thrash. Re-running
@@ -150,12 +204,13 @@ gotchas in. Check all four:
    `theme = "adeberry"`, `is_any_ai_enabled = false`,
    `default_session_mode = "tab_config"`, `[appearance.vertical_tabs] enabled =
    true`, `zoom_level = 125`, and that `default_tab_config_path` resolves to **this
-   machine's `claude.toml`** (token substituted to a real path, our value - **not**
-   a pre-existing user path the merge failed to overwrite). This is the user's
-   standing *preference* for new windows; do **not** rely on Warp honoring it to
-   auto-open Claude (a fresh launch opens Warp's built-in default instead) - the
-   running Claude session is delivered by step E's explicit tab-config open, not by
-   this value.
+   machine's tab_configs dir + the chosen scope's default filename** (`claude.toml`
+   for Claude Code, `codex.toml` for Codex, `claude.toml` for Both), joined with the
+   OS-native separator - the token substituted to a real path, our value, **not** a
+   pre-existing user path the merge failed to overwrite. This is the user's standing *preference* for new windows; do
+   **not** rely on Warp honoring it to auto-open the agent (a fresh launch opens
+   Warp's built-in default instead) - the running session(s) are delivered by step
+   E's explicit tab-config open, not by this value.
 2. **No BOM.** Warp's TOML parser chokes on a BOM. Read the first 3 bytes of
    `settings.toml` and assert they are **NOT** `239,187,191` (EF BB BF), e.g.:
 
@@ -165,8 +220,9 @@ gotchas in. Check all four:
 
 3. **Didn't clobber.** Compare against what you read **before** writing: every
    user key/section that isn't ours must still be present in the merged file.
-4. **Tab configs match desired exactly.** Re-read both `.toml` files and confirm
-   they equal the assets byte-for-byte.
+4. **Tab configs match desired exactly.** Re-read the `.toml` files you wrote **for
+   the chosen scope** (the `claude` pair, the `codex` pair, or all four for Both)
+   and confirm they equal the assets byte-for-byte.
 
 On a failed check, adjust and retry within the 2-3 attempt bound.
 
@@ -184,14 +240,15 @@ Compose a precise ask with full context:
 
 ## Report
 
-When done, report across all steps: whether Warp was installed or already present
-(and by which method), whether you waited on the onboarding gate, the files
-written and that they **stuck** (the re-read + four checks confirm it), that
-pre-existing settings were preserved, that Warp is running, and that you opened a
-**Claude session** via the `claude` tab config (step E) - ask the user to confirm
-a `claude` tab appeared. Mention other tabs come from Warp's `+` menu, and that
-because you wrote config with Warp stopped, the visual setup is already applied on
-this launch - no further reload needed.
+When done, report across all steps: the **chosen scope** (Claude Code, Codex, or
+Both), whether Warp was installed or already present (and by which method), whether
+you waited on the onboarding gate, the files written and that they **stuck** (the
+re-read + four checks confirm it), that pre-existing settings were preserved, that
+Warp is running, and that you opened a **session for each chosen agent** via its tab
+config (step E) - ask the user to confirm those tabs appeared. Mention the
+scope's tab configs are available from Warp's `+` menu, and that because you wrote
+config with Warp stopped, the visual setup is already applied on this launch - no
+further reload needed.
 
 ## Notes
 

@@ -1,0 +1,8 @@
+# Warp Tab Config - managed by the warp-setup skill.
+# Docs: https://docs.warp.dev/terminal/windows/tab-configs
+name = "codex-resume"
+
+[[panes]]
+id = "main"
+type = "terminal"
+commands = ["codex resume --yolo"]

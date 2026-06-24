@@ -1,9 +1,12 @@
 # Warp settings.toml - managed by the warp-setup skill (the "visual setup").
-# Ships verbatim from Rainier's live config EXCEPT default_tab_config_path, whose
-# directory is a placeholder token (see the [general] line below); the installer
-# replaces it with this machine's OS-correct tab_configs directory at apply time.
-# Nothing sensitive lives here once tokenized (the Warp account email and command
-# history live only in warp.sqlite, which this skill never reads or ships).
+# Ships verbatim from Rainier's live config EXCEPT default_tab_config_path, which
+# carries one placeholder token (see the [general] line below):
+# {{DEFAULT_TAB_CONFIG_PATH}} is replaced at apply time with the FULL, OS-native
+# path to the chosen scope's default tab config - this machine's tab_configs
+# directory joined to the chosen filename (claude.toml or codex.toml) using the OS's
+# own separator (\ on Windows, / on macOS). Nothing sensitive lives here once
+# tokenized (the Warp account email and command history live only in warp.sqlite,
+# which this skill never reads or ships).
 [appearance]
 
 [appearance.themes]
@@ -47,4 +50,4 @@ osc52_clipboard_access = "write_only"
 [general]
 show_warning_before_quitting = false
 default_session_mode = "tab_config"
-default_tab_config_path = '{{TAB_CONFIG_DIR}}/claude.toml'
+default_tab_config_path = '{{DEFAULT_TAB_CONFIG_PATH}}'
