@@ -1,0 +1,19 @@
+{
+  "name": "productivity",
+  "description": "Portable, general-purpose productivity skills for any Claude Code workflow: open a fresh chat in a new tab (breakout), hand the conversation off to a new agent (handoff), and get a plan stress-tested through relentless interview (grill-me).",
+  "author": {
+    "name": "Rainier"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Productivity",
+    "shortDescription": "Portable helpers: fresh-chat breakout, conversation handoff, plan grilling.",
+    "longDescription": "Portable, general-purpose productivity skills for any workflow: breakout opens a fresh chat in a new tab, handoff compacts the conversation into a document a new agent can pick up, and grill-me stress-tests a plan or design through relentless interview until the decisions are settled.",
+    "developerName": "Rainier",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ]
+  }
+}

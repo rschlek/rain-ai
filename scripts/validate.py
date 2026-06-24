@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
+CODEX_MARKETPLACE_JSON = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
 PLUGINS_DIR = REPO_ROOT / "plugins"
 
 errors: list[str] = []
@@ -71,6 +72,10 @@ def discover_plugins() -> list[Path]:
 def validate_plugin(plugin_dir: Path) -> None:
     print(f"Validating plugin: {plugin_dir.name}")
     validate_json(plugin_dir / ".claude-plugin" / "plugin.json")
+    # A codexified plugin also carries a Codex manifest; validate it when present.
+    codex_manifest = plugin_dir / ".codex-plugin" / "plugin.json"
+    if codex_manifest.is_file():
+        validate_json(codex_manifest)
     skills_dir = plugin_dir / "skills"
     skill_dirs = [d for d in skills_dir.iterdir() if d.is_dir()] if skills_dir.is_dir() else []
     if not skill_dirs:
@@ -79,15 +84,18 @@ def validate_plugin(plugin_dir: Path) -> None:
         validate_skill(skill_dir)
 
 
-def check_catalog_versions() -> None:
+def check_catalog_versions(catalog: Path, manifest_subpath: str) -> None:
     """A plugin's version belongs in its own plugin.json, never in the
     marketplace catalog. Flag any 'version' key found inside a marketplace
     plugin entry so the single-source-of-truth rule stays self-enforcing.
-    Also confirm every catalogued plugin's source directory exists."""
-    if not MARKETPLACE_JSON.is_file():
+    Also confirm every catalogued plugin's source directory carries the
+    manifest the catalog implies (.claude-plugin for the Claude catalog,
+    .codex-plugin for the Codex catalog)."""
+    if not catalog.is_file():
         return
+    label = catalog.relative_to(REPO_ROOT)
     try:
-        with open(MARKETPLACE_JSON, "r", encoding="utf-8") as f:
+        with open(catalog, "r", encoding="utf-8") as f:
             data = json.load(f)
     except json.JSONDecodeError:
         return  # validate_json already reported the parse failure
@@ -97,23 +105,31 @@ def check_catalog_versions() -> None:
         name = entry.get("name", "<unnamed>")
         if "version" in entry:
             errors.append(
-                f"marketplace.json: plugin entry '{name}' has a 'version' key; "
+                f"{label}: plugin entry '{name}' has a 'version' key; "
                 f"remove it (the version belongs in that plugin's plugin.json)"
             )
+        # The Claude catalog stores `source` as a relative path string; the
+        # Codex catalog stores an object {source: "local", path: "./..."}.
         source = entry.get("source")
-        if source:
-            source_path = (REPO_ROOT / source).resolve()
-            if not (source_path / ".claude-plugin" / "plugin.json").is_file():
+        source_rel = source.get("path") if isinstance(source, dict) else source
+        if source_rel:
+            source_path = (REPO_ROOT / source_rel).resolve()
+            if not (source_path / manifest_subpath).is_file():
                 errors.append(
-                    f"marketplace.json: plugin '{name}' source '{source}' has no "
-                    f".claude-plugin/plugin.json"
+                    f"{label}: plugin '{name}' source '{source_rel}' has no "
+                    f"{manifest_subpath}"
                 )
 
 
 def main() -> None:
     print("Validating marketplace catalog...")
     validate_json(MARKETPLACE_JSON)
-    check_catalog_versions()
+    check_catalog_versions(MARKETPLACE_JSON, str(Path(".claude-plugin") / "plugin.json"))
+
+    if CODEX_MARKETPLACE_JSON.is_file():
+        print("Validating Codex marketplace catalog...")
+        validate_json(CODEX_MARKETPLACE_JSON)
+        check_catalog_versions(CODEX_MARKETPLACE_JSON, str(Path(".codex-plugin") / "plugin.json"))
 
     print()
     plugins = discover_plugins()
