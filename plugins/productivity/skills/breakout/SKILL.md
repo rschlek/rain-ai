@@ -19,10 +19,14 @@ current session is in** (Claude Code or Codex, auto-detected), optionally seeded
 with a starting prompt. The current session is never paused. Use it directly to
 start a clean chat, or after a handoff to continue work in a fresh context.
 
-This skill is **Warp-only** and **model-driven** - it ships **no script**. You
-detect the OS, write a throwaway Warp tab config with the Write tool, and fire
-Warp's tab-config URI - the same mechanism `warp-setup` uses, adapted at run time
-to whatever OS Warp is running on.
+This skill is **Warp-only**. On **macOS / Linux** it is fully **model-driven**:
+you detect the OS, write a throwaway Warp tab config with the Write tool, and fire
+Warp's tab-config URI. On **Windows** it delegates the launch to one small bundled
+helper, `scripts/breakout.ps1`, because PowerShell 5.1's native-exe argument
+quoting is too fragile to assemble inline reliably - a seed with a literal `"`
+splits and the prompt truncates (see *Seed quoting* below). The helper owns that
+escaping in code so it cannot regress; everything else is the same Warp
+tab-config mechanism `warp-setup` uses.
 
 ## Why a new session, not a subagent
 
@@ -30,15 +34,16 @@ A subagent runs autonomously and returns a result to the orchestrator - the user
 cannot converse with it. A real, talk-to-it chat only exists as a new `claude` (or
 `codex`) session. Breakout launches one.
 
-## Why Warp, why no script
+## Why Warp
 
 A new tab *in the current terminal* is only reachable through that terminal's own
 mechanism. Warp exposes one: the `warp://tab_config/<name>` URI opens a new tab
 running a config file you drop in Warp's `tab_configs` dir. That URI behaves the
 same on every OS Warp supports - only the config directory and the "open a URI"
-command differ, which you resolve at run time. So breakout needs no bundled
-launcher; it is a few inline steps you run with the harness and the Write tool.
-If the user is not on Warp, this skill does not apply - say so and stop.
+command differ, which you resolve at run time. So breakout is a few inline steps
+(the harness + the Write tool) on macOS / Linux, and the bundled
+`scripts/breakout.ps1` on Windows. If the user is not on Warp, this skill does not
+apply - say so and stop.
 
 ## Steps
 
@@ -82,29 +87,34 @@ anything beyond a trivial one-liner, write it to a temp file with the Write tool
 and have the new tab read it - the seed then never transits a command line, so
 quotes / `$` / backticks survive regardless of shell.
 
-**5. Compose the command the new tab runs.** It must first **delete the throwaway
-config** - Warp has already read it, so this is race-free and leaves no lingering
-`breakout` entry in the `+` menu - then run the detected CLI with its args and the
-seed (passed as the CLI's initial-prompt positional arg - `claude <args> "<seed>"`
-or `codex <args> "<seed>"`). Templates (substitute real values; `<cli>` = the
-launch command from step 3, `<args>` its args, `<cfg>` = the tab config from step
-6, `<seed>` = the temp file from step 4):
+**5. Launch.** This step differs by OS. Both paths produce the same result: a
+self-deleting `breakout.toml` whose one command deletes the config (Warp has
+already read it - race-free, no lingering `+`-menu entry), then runs the detected
+CLI with its args and the seed as the initial-prompt positional arg.
 
-- bash / zsh:
+- **Windows - call the bundled helper.** Do **not** hand-assemble the command or
+  TOML here; PowerShell 5.1's quoting will truncate the seed (see *Seed quoting*).
+  The helper owns the seed-escaping, writes the config, deletes the seed file, and
+  fires the URI:
+  ```powershell
+  & "${CLAUDE_PLUGIN_ROOT}/skills/breakout/scripts/breakout.ps1" -LaunchCmd <cli> -LaunchArgs '<args>' -SeedFile '<seed>'
+  ```
+  `<cli>` = `claude` or `codex` (step 2/3), `<args>` = its args (step 3, may be
+  empty), `<seed>` = the temp file from step 4. **Omit `-SeedFile` entirely** for
+  an empty chat. The helper prints what it launched; you are done - skip steps 6-7.
+
+- **macOS / Linux - model-driven inline.** bash/zsh's `"$(cat file)"` passes the
+  seed verbatim, so no helper is needed. Compose the tab command (`<cfg>` = the tab
+  config from step 6, `<seed>` = the temp file from step 4):
   ```
   rm -f '<cfg>'; S="$(cat '<seed>')"; rm -f '<seed>'; <cli> <args> "$S"
   ```
-- PowerShell:
-  ```
-  Remove-Item -LiteralPath '<cfg>' -EA SilentlyContinue; $S = Get-Content -Raw -LiteralPath '<seed>'; Remove-Item -LiteralPath '<seed>' -EA SilentlyContinue; <cli> <args> $S
-  ```
+  With no seed, drop the `$S` / `S=` parts and just delete `<cfg>` then run
+  `<cli> <args>`. Then do steps 6-7.
 
-With no seed, drop the `$S` / `S=` parts and just delete `<cfg>` then run
-`<cli> <args>`.
-
-**6. Write the tab config** with the Write tool (UTF-8, **no BOM** - Warp's TOML
-parser chokes on a BOM; the Write tool emits no BOM, so just use it). Write
-`<tab_configs>/breakout.toml`:
+**6. Write the tab config** (macOS / Linux only - the Windows helper already did
+this) with the Write tool (UTF-8, **no BOM** - Warp's TOML parser chokes on a BOM;
+the Write tool emits no BOM, so just use it). Write `<tab_configs>/breakout.toml`:
 
 ```toml
 name = "breakout"
@@ -119,21 +129,25 @@ The `commands` entry is a TOML basic string: escape `\` as `\\` and `"` as `\"`
 inside it. Writing the file directly (not through a shell) means that is the only
 escaping you do.
 
-**7. Fire the URI** with the row's open command. Warp opens the new tab, which
-deletes its own config and starts the detected CLI.
+**7. Fire the URI** (macOS / Linux only) with the row's open command. Warp opens
+the new tab, which deletes its own config and starts the detected CLI.
 
 **8. Confirm.** You cannot see the new tab - ask the user what opened.
 
-## Seed quoting caveats
+## Seed quoting
 
-- bash / zsh `"$(cat file)"` passes the file content as one argument verbatim -
-  robust for any characters.
-- PowerShell 5.1 does **not** escape interior `"` when calling a native exe, so a
-  seed containing a literal `"` can split into extra args (claude then trips on a
-  stray token like `unknown option`). `pwsh` (7+) handles it correctly. If you
-  must pass a `"`-containing seed under 5.1, double each run of backslashes before
-  a `"` and add one more (CommandLineToArgvW rule) so the quote survives. Composed
-  kickoff prompts rarely need literal `"` - prefer avoiding them.
+This is the whole reason the Windows path is a script, not inline steps.
+
+- **bash / zsh** `"$(cat file)"` passes the file content as one argument verbatim -
+  robust for any characters. That is why macOS / Linux stays model-driven.
+- **PowerShell 5.1** does **not** escape interior `"` when calling a native exe, so
+  a seed containing a literal `"` splits into extra args and the prompt truncates
+  at the first `"` (claude then trips on a stray token like `unknown option`). The
+  fix is the CommandLineToArgvW rule - double each run of backslashes before a `"`
+  and add one more - plus single-quote-wrapping the literal. That escaping is
+  fiddly and easy to get wrong inline (it has regressed before), so it lives in
+  `scripts/breakout.ps1`, which the Windows path calls. **Do not** reimplement it
+  inline; pass the seed to the helper via `-SeedFile` and let it handle the rest.
 
 ## Composing the seed (when continuing work)
 
@@ -145,9 +159,10 @@ transcript.
 
 ## For other skills
 
-Sibling skills compose their own seed and run these same steps (write the seed
-file, write the tab config, fire the URI). Breakout owns only the mechanism (a
-new Warp tab); the caller owns what the prompt says.
+Sibling skills compose their own seed and run these same steps - on Windows, write
+the seed file and call `scripts/breakout.ps1`; on macOS / Linux, write the seed
+file, the tab config, and fire the URI. Breakout owns only the mechanism (a new
+Warp tab) and the seed-escaping; the caller owns what the prompt says.
 
 ## Notes
 
