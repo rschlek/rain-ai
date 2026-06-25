@@ -85,7 +85,12 @@ pointer, even a one-line dictated fact.
       local-only brain has none, so skip the pull).
    2. Write the raw doc at its path, creating `raw/<sub>/` if needed. **Never overwrite** an
       existing raw doc - if the path collides, disambiguate the slug.
-   3. Append the pointer block at the **bottom** of `inbox.md` (append-only; never reorder/rewrite).
+   3. Append the pointer block **below the `<!-- synthesized through: ... -->` watermark** - at the
+      very end of `inbox.md`. The watermark is positional: everything below it is pending, so a new
+      capture must land below it. **Even when the watermark is currently the last line of the file**
+      (the inbox was just refined to empty), the pointer goes *after* it - never above it; do not
+      treat the watermark as a trailing footer to preserve. Append-only: never reorder or rewrite
+      existing pointers or the watermark.
    4. Count **pending** pointers below the `<!-- synthesized through: ... -->` watermark: **N** =
       all `##`-headed entries (includes the one just added); **M** = those of the N **not** tagged
       `substance:low` (manual captures are unflagged, so they count as substantive).

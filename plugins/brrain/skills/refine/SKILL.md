@@ -111,7 +111,11 @@ never drifts.
 
 5. **On approve - land it atomically.** Fold in any final gap answers, then:
    1. **Advance the watermark**: move the `<!-- synthesized through: ... -->` line in `inbox.md`
-      down past every consumed entry; update its comment text to the last-consumed date.
+      down past every consumed entry; update its comment text to the last-consumed date. If this
+      consumes every pending entry, leave a single trailing blank line after the watermark so it is
+      never the literal last line of the file - that keeps the next capture's append-below-watermark
+      unambiguous (a watermark left as the last line can be misread as a file-final footer, and the
+      capture lands above it where the next refine never sees it).
    2. **Write the `log.md` entry** (one narrative entry per committed pass; format in the
       rulebook): entries synthesized + watermark move, pages touched (flat slugs), and the gate-time
       curation (gap answers given, `Agent` claims confirmed). **Because pages no longer narrate their
