@@ -98,8 +98,11 @@ The heading is: `## [YYYY-MM-DD] <optional project tag> (<provenance>) raw/<sub>
 - **Raw pointer** - the repo-relative path to the doc this capture just wrote. Required.
 - **Gist** - one line, freeform. Just enough for `refine` to triage without opening the doc.
 
-Append new pointers at the **bottom** (append-only, ingestion order). Never reorder or rewrite
-existing pointers.
+Append new pointers at the **bottom** - strictly **below the `<!-- synthesized through: ... -->`
+watermark** (the watermark is positional; everything below it is pending). **Even when the watermark
+is the last line** (the inbox was just refined to empty), the new pointer goes *below* it, never
+above - never treat the watermark as a trailing footer. Append-only, ingestion order; never reorder
+or rewrite existing pointers or the watermark.
 
 ### Provenance: `Me` vs `Agent`
 
@@ -460,7 +463,10 @@ as a capture, and the next refine clears it); surface every clear in the gate su
 
 The `<!-- synthesized through: ... -->` line in `inbox.md` is **positional**: everything below it
 is pending. On the approved commit, move the line **down** past every entry this pass consumed,
-and update its comment text to the last-consumed date for readability. There is no deferral - the
+and update its comment text to the last-consumed date for readability. A new capture always appends
+its pointer **below** this line; when a refine drains every pending entry, leave one trailing blank
+line after the watermark so it is never the literal last line of the file (which a capture could
+misread as a footer and append above, where the next refine would never see it). There is no deferral - the
 gate is binary (approve the whole batch, or reject and nothing lands); a "not ready" note is
 still synthesized, just with a `> needs:` marker.
 
