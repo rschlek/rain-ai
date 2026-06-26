@@ -32,7 +32,10 @@ this skill never drifts.
    `~/.brrain/registry.json` (its `active` field). If the registry is missing or has no active
    brain, **stop** and tell the user to run `brrain:setup` first - do not guess a path. Otherwise `cd` into
    that path; if the brain has an upstream remote, `git pull --ff-only` first (freshness; a
-   local-only brain has none, so skip), then read the brain's `RULEBOOK.md`.
+   local-only brain has none, so skip), then read the brain's `RULEBOOK.md`. Also resolve the shared
+   lock helper `${CLAUDE_PLUGIN_ROOT}/scripts/brain-lock.sh` - audit takes that mutex **once,
+   briefly, around the land-commit** (step 5), so its git write cannot race another tab's. The
+   read-only detection (step 3) and the human gate (step 4) hold **no lock**.
 
 2. **Fix the scope.** Bare `audit` is a **whole-corpus sweep**. `audit on <subject>`
    scopes to one page/subject and its backlinkers. Default to the sweep unless the user named a
@@ -111,14 +114,19 @@ this skill never drifts.
      and land** / **Request edits** / **Reject and discard**. An unprompted clear "approve and land
      it" still counts - do not force the question if the user has said yes.
 
-5. **On approve - land it atomically.** Fold in any final adjudications, then:
+5. **On approve - land it atomically (locked).** Fold in any final adjudications, then take the lock
+   just for the land and release it the moment the commit is done:
+   0. **Acquire:** `nonce=$(bash <brain-lock.sh> acquire <brain-path>)`. A non-zero exit means it
+      failed loud (another brrain op is mid-write or stuck) - surface it and stop. Release the lock
+      before stopping if any step below fails.
    1. **Write the `log.md` entry** (one narrative entry per committed pass; format in the rulebook):
       pages touched (flat slugs), fixes applied, supersessions reconciled, contradictions resolved vs
       `> contested:` planted, and `> contested:` cleared.
    2. `git add` the changed pages, `index.md`, and `log.md`; **one commit** with a readable summary;
       then **`git push`** if the brain has an upstream remote (a local-only brain just keeps the
       commit local).
-   3. Report a one-line confirmation: `audit -> <F> fixes, <C> contested, <P> pages`.
+   3. **Release:** `bash <brain-lock.sh> release <brain-path> "$nonce"`.
+   4. Report a one-line confirmation: `audit -> <F> fixes, <C> contested, <P> pages`.
 
 6. **On reject - leave no trace.** Run `git checkout .` (and remove any newly-created untracked
    pages) so the working tree returns to clean. Nothing is committed. Tell the user the audit was
