@@ -25,14 +25,27 @@ never drifts.
 
 1. **Precondition.** Read the active brain's path from the engine registry at
    `~/.brrain/registry.json` (its `active` field). If the registry is missing or has no active
-   brain, **stop** and tell the user to run `brrain:setup` first - do not guess a path. Otherwise `cd` into
-   that path; if the brain has an upstream remote, `git pull --ff-only` first (freshness; a
-   local-only brain has none, so skip), then read the brain's `RULEBOOK.md`.
+   brain, **stop** and tell the user to run `brrain:setup` first - do not guess a path. Otherwise
+   `cd` into that path and read the brain's `RULEBOOK.md`. Also resolve the shared lock helper
+   `${CLAUDE_PLUGIN_ROOT}/scripts/brain-lock.sh` - refine takes that mutex **twice, briefly** (the
+   gather in step 2 and the land in step 5), and **never across the step-4 human gate** (see Notes).
+   The freshness `git pull` is deferred into the locked gather so all git runs serialized.
 
-2. **Gather the pending tail.** Read `inbox.md`. The pending entries are the `##`-headed pointers
-   **below** the `<!-- synthesized through: ... -->` watermark. Collect their raw-doc paths. If
-   there are zero pending entries, tell the user the tail is empty and stop. Read the current
-   `index.md` if it exists (it will not on the first refine).
+2. **Gather the pending tail (locked).** Take the lock for a clean, consistent snapshot, then
+   release it immediately - the long drafting and review run lock-free:
+   1. **Acquire:** `nonce=$(bash <brain-lock.sh> acquire <brain-path>)`. A non-zero exit means it
+      failed loud (another brrain op is mid-write or stuck) - surface it and stop. Release the lock
+      before stopping if any step below fails.
+   2. If the brain has an upstream remote, `git pull --ff-only` (freshness; a local-only brain has
+      none - skip).
+   3. Read `inbox.md`. The pending entries are the `##`-headed pointers **below** the
+      `<!-- synthesized through: ... -->` watermark. **Record this gather-time consume set**
+      (their order, dates, and raw-doc paths) - the pass consumes exactly this set and no more, so a
+      capture that lands in another tab during the gate stays pending for next time. If there are
+      zero pending entries, release the lock, tell the user the tail is empty, and stop. Read the
+      current `index.md` if it exists (it will not on the first refine).
+   4. **Release:** `bash <brain-lock.sh> release <brain-path> "$nonce"`. Drafting and the gate hold
+      no lock.
 
 3. **Draft in a subagent (clean context).** Hand the subagent: the list of pending raw-doc paths,
    the active brain's path, the current `index.md` contents, and the brain `RULEBOOK.md`.
@@ -109,11 +122,18 @@ never drifts.
      edits -> apply them and re-present; on reject -> step 6. (An unprompted "approve and land it" in
      chat still counts as approval - do not force the question if they have already given a clear yes.)
 
-5. **On approve - land it atomically.** Fold in any final gap answers, then:
-   1. **Advance the watermark**: move the `<!-- synthesized through: ... -->` line in `inbox.md`
-      down past every consumed entry; update its comment text to the last-consumed date. If this
-      consumes every pending entry, leave a single trailing blank line after the watermark so it is
-      never the literal last line of the file - that keeps the next capture's append-below-watermark
+5. **On approve - land it atomically (locked).** Fold in any final gap answers, then take the lock
+   a **second** time - just for the land - and release it the moment the commit is done:
+   0. **Acquire:** `nonce=$(bash <brain-lock.sh> acquire <brain-path>)` (fail-loud as in step 2;
+      release before stopping if any step below fails).
+   1. **Advance the watermark - past the gather-time consume set only.** Re-read `inbox.md` fresh
+      (a capture may have appended below the tail during the gate). Move the
+      `<!-- synthesized through: ... -->` line down past every entry **this pass consumed** (the set
+      recorded in step 2.3), and set its comment text to the last-consumed date. **Any pointer that
+      landed during the gate sits below those and must stay below the new watermark** - it is pending
+      for the next refine; never consume or drop it. If the consume set was the entire tail and no
+      new capture landed, leave a single trailing blank line after the watermark so it is never the
+      literal last line of the file - that keeps the next capture's append-below-watermark
       unambiguous (a watermark left as the last line can be misread as a file-final footer, and the
       capture lands above it where the next refine never sees it).
    2. **Write the `log.md` entry** (one narrative entry per committed pass; format in the
@@ -125,8 +145,10 @@ never drifts.
    3. `git add` the changed pages, `index.md`, `inbox.md`, and `log.md`; **one commit** with a
       readable summary; then **`git push`** if the brain has an upstream remote (a local-only brain
       just keeps the commit local).
-   4. Report a one-line confirmation: `synthesized -> <N> entries, <P> pages (watermark -> <date>)`.
-   5. **Nudge `audit`** if the corpus looks due for an audit (it has grown, or `log.md` shows
+   4. **Release:** `bash <brain-lock.sh> release <brain-path> "$nonce"`. This is the end of the
+      second brief lock; the brain is unlocked for the other tabs again.
+   5. Report a one-line confirmation: `synthesized -> <N> entries, <P> pages (watermark -> <date>)`.
+   6. **Nudge `audit`** if the corpus looks due for an audit (it has grown, or `log.md` shows
       no recent `audit` pass): add a soft one-line "consider running audit". It is a
       nudge like the `(N pending, M substantive)` count, not a gate - skip it when an audit is clearly fresh.
 
@@ -139,6 +161,14 @@ never drifts.
 - The subagent does the reading and drafting so the raw-doc contents never flood the user's
   session. The parent holds only the summary and the (small) working-tree pages it edits during
   revisions.
+- **Two brief locks, never across the gate.** refine takes the `scripts/brain-lock.sh` mutex only
+  twice - the gather (step 2) and the land-commit (step 5) - and releases it for the whole long
+  human review in between. Holding it across the gate would freeze every other tab's captures for
+  the minutes the review takes. This is safe because capture is append-only **below** the watermark:
+  a capture that lands mid-review just stays pending for the *next* refine, and the land consumes
+  only the gather-time set (step 2.3), so it never touches the new pointer. The land's `git add` is
+  path-scoped, so it also won't sweep up a concurrent capture's commit. The land step re-reads
+  `inbox.md` fresh precisely so it preserves any pointer that arrived during the gate.
 - **Not auto-pushed** means any push follows the user's approval, never precedes it - the opposite
   of capture, which pushes as soon as it commits (when the brain has a remote) because the inbox is
   untrusted staging.
