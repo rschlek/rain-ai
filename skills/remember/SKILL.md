@@ -76,9 +76,9 @@ pointer, even a one-line dictated fact.
 
 6. **Write it in a subagent, behind the lock** (keep this session's context clean). Pass the
    subagent: the composed raw-doc body, the raw-doc path, the pointer block, the active brain's
-   path, **and the absolute paths to the two shared helpers** - resolve `brain-lock.sh` and
-   `brain-append.sh` from `${CLAUDE_PLUGIN_ROOT}/scripts/` and pass them in, so the subagent needs
-   no plugin env of its own. This step is file I/O + git with **zero judgment** - the lightest
+   path, **and the absolute paths to the three shared helpers** - resolve `brain-lock.sh`,
+   `brain-append.sh`, and `brain-pull.sh` from `${CLAUDE_PLUGIN_ROOT}/scripts/` and pass them in, so
+   the subagent needs no plugin env of its own. This step is file I/O + git with **zero judgment** - the lightest
    available tier fits; **by default inherit the session model** (express the tier as intent, name
    no specific model). (Exception: on the exhaust-mine path the step-4 subagent already carries
    through this write - do not spin a second one.)
@@ -115,8 +115,11 @@ pointer, even a one-line dictated fact.
         7's echo-and-offer. (The composed raw-doc draft is just discarded - it is re-derivable from
         the chat.)
    4. **Otherwise land it (`N < 5`)** - still under the lock:
-      - If the brain has an upstream remote, `git pull --ff-only` first (a local-only brain has
-        none - skip).
+      - **Freshness pull:** run `bash <brain-pull.sh> <brain-path>` (it does the `git pull --ff-only`
+        and is a no-op for a local-only brain). A **non-zero exit means the brain is behind the
+        remote and could not fast-forward** - do **not** write on a stale base: **release the lock**,
+        surface the helper's message so the user can resolve the pull by hand, and stop. (A transient
+        pull hiccup while already up-to-date exits 0, so it never needlessly blocks a capture.)
       - Write the raw doc at its path, creating `raw/<sub>/` if needed. **Never overwrite** an
         existing raw doc - if the path collides, disambiguate the slug.
       - **Append the pointer with the helper, never a tool edit.** Pipe the pointer block into

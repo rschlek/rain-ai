@@ -26,18 +26,21 @@ never drifts.
 1. **Precondition.** Read the active brain's path from the engine registry at
    `~/.brrain/registry.json` (its `active` field). If the registry is missing or has no active
    brain, **stop** and tell the user to run `brrain:setup` first - do not guess a path. Otherwise
-   `cd` into that path and read the brain's `RULEBOOK.md`. Also resolve the shared lock helper
-   `${CLAUDE_PLUGIN_ROOT}/scripts/brain-lock.sh` - refine takes that mutex **twice, briefly** (the
-   gather in step 2 and the land in step 5), and **never across the step-4 human gate** (see Notes).
-   The freshness `git pull` is deferred into the locked gather so all git runs serialized.
+   `cd` into that path and read the brain's `RULEBOOK.md`. Also resolve the shared helpers
+   `${CLAUDE_PLUGIN_ROOT}/scripts/brain-lock.sh` and `.../brain-pull.sh` - refine takes the mutex
+   **twice, briefly** (the gather in step 2 and the land in step 5), and **never across the step-4
+   human gate** (see Notes). The freshness pull is deferred into the locked gather so all git runs
+   serialized.
 
 2. **Gather the pending tail (locked).** Take the lock for a clean, consistent snapshot, then
    release it immediately - the long drafting and review run lock-free:
    1. **Acquire:** `nonce=$(bash <brain-lock.sh> acquire <brain-path>)`. A non-zero exit means it
       failed loud (another brrain op is mid-write or stuck) - surface it and stop. Release the lock
       before stopping if any step below fails.
-   2. If the brain has an upstream remote, `git pull --ff-only` (freshness; a local-only brain has
-      none - skip).
+   2. **Freshness pull:** run `bash <brain-pull.sh> <brain-path>` (it does the `git pull --ff-only`
+      and is a no-op for a local-only brain). A **non-zero exit means the brain is behind the remote
+      and could not fast-forward** - do not refine on a stale base: **release the lock**, surface the
+      helper's message, and stop. (A transient hiccup while up-to-date exits 0 and proceeds.)
    3. Read `inbox.md`. The pending entries are the `##`-headed pointers **below** the
       `<!-- synthesized through: ... -->` watermark. **Record this gather-time consume set**
       (their order, dates, and raw-doc paths) - the pass consumes exactly this set and no more, so a
