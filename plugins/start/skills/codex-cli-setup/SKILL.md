@@ -1,5 +1,6 @@
 ---
 name: codex-cli-setup
+disable-model-invocation: true
 description: >-
   Set up the Codex CLI on the current device with the system-level Codex feature
   flags other plugins build on: enable the device-wide `hooks` feature in

@@ -1,5 +1,6 @@
 ---
 name: setup
+disable-model-invocation: true
 description: >-
   Per-device setup and brain management for the user's second brain (brrain): a menu to CREATE a
   new local brain from the bundled template, MANAGE / SELECT brains (register an existing local

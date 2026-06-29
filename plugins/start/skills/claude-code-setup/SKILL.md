@@ -1,5 +1,6 @@
 ---
 name: claude-code-setup
+disable-model-invocation: true
 description: >-
   Set up the user's GLOBAL Claude Code settings on the current device with a
   portable baseline: merge a small set of shared preferences (commit/PR

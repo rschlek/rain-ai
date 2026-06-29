@@ -1,5 +1,6 @@
 ---
 name: warp-setup
+disable-model-invocation: true
 description: >-
   Apply the user's standard Warp terminal configuration on the current device - the
   visual setup (theme, fonts, zoom, vertical tabs via settings.toml) plus the agent
