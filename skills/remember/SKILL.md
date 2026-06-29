@@ -25,7 +25,7 @@ a `refine` drains the tail - back-pressure toward synthesis, never toward forcin
 count-and-append runs behind a **local mutex** so the cap stays exact across the user's several open
 tabs (all writing the one local repo); the helpers in `scripts/` carry that machinery. The brain's own `RULEBOOK.md` (in the active brain's
 repo) is the authoritative rulebook - read its capture sections (the
-three tiers, the raw-doc conventions, the pointer schema, brain-worthy criteria, the deny-list)
+three tiers, the raw-doc conventions, the pointer schema, brain-worthy criteria)
 and follow them so this skill never drifts. **Zero exceptions:** every capture parks a raw doc + a
 pointer, even a one-line dictated fact.
 
@@ -34,11 +34,7 @@ pointer, even a one-line dictated fact.
    brain, **stop** and tell the user to run `brrain:setup` - do not guess a path. Read the brain's
    `RULEBOOK.md` for the conventions below.
 
-2. **Deny-list gate.** If the content is about **medical, therapy, or health**, do **not** park it
-   without an explicit in-the-moment override from the user ("yes, store it anyway"). If they want it
-   referenced but not vendored, use cite-by-pointer (step 5). Everything else parks freely.
-
-3. **Decide the source kind** - this is the only branching, and it just picks which raw doc gets
+2. **Decide the source kind** - this is the only branching, and it just picks which raw doc gets
    written:
    - **Dictated fact** - the user stated a specific fact. Provenance `Me`. -> a tiny doc in
      `raw/exhaust/`.
@@ -50,17 +46,17 @@ pointer, even a one-line dictated fact.
    - **Document** - a PDF or source doc. Provenance `Agent`. -> `raw/docs/`, **vendored verbatim**
      if small / local / durable, or **cite-by-pointer** if big, re-fetchable, or sensitive.
 
-4. **Apply the brain-worthy filter.** Privilege durable judgment over re-derivable inventory:
+3. **Apply the brain-worthy filter.** Privilege durable judgment over re-derivable inventory:
    capture decisions, open questions, reframes, hard-won facts; skip what a repo / calendar / task
    list already records. For a summary or a mine this is your selection criterion; for a borderline
    tidbit, park only the judgment ("we chose X over Y because Z"), not the inventory.
 
-5. **Compose the raw doc + the pointer.**
+4. **Compose the raw doc + the pointer.**
    - Compose the raw-doc body where the content already is. For the **exhaust-mine** kind, run the
      mining + drafting in a **subagent**. This is heavy reading over git/tasks plus distillation -
      **judgment-class** work a capable mid-tier model handles well; **by default inherit the session
      model** (express the tier as intent, name no specific model - cost-optimizing to a fixed tier
-     is a later concern). The same subagent can carry through the write in step 7. For the other
+     is a later concern). The same subagent can carry through the write in step 6. For the other
      kinds the material is already in this session, so compose it here.
    - For **cite-by-pointer**, the raw doc is a stub: source location + capture date + a content hash
      when you have the bytes (e.g. sha256 of a local file); otherwise record source + date and mark
@@ -74,17 +70,17 @@ pointer, even a one-line dictated fact.
      <one-line gist>
      ```
 
-6. **Supersession.** If this changes a fact captured before, it is a **new** raw doc + **new**
+5. **Supersession.** If this changes a fact captured before, it is a **new** raw doc + **new**
    pointer, never an edit to the old ones. The dates carry the history; `refine` reconciles the
    canonical page later.
 
-7. **Write it in a subagent, behind the lock** (keep this session's context clean). Pass the
+6. **Write it in a subagent, behind the lock** (keep this session's context clean). Pass the
    subagent: the composed raw-doc body, the raw-doc path, the pointer block, the active brain's
    path, **and the absolute paths to the two shared helpers** - resolve `brain-lock.sh` and
    `brain-append.sh` from `${CLAUDE_PLUGIN_ROOT}/scripts/` and pass them in, so the subagent needs
    no plugin env of its own. This step is file I/O + git with **zero judgment** - the lightest
    available tier fits; **by default inherit the session model** (express the tier as intent, name
-   no specific model). (Exception: on the exhaust-mine path the step-5 subagent already carries
+   no specific model). (Exception: on the exhaust-mine path the step-4 subagent already carries
    through this write - do not spin a second one.)
 
    The read-count-plus-append is a **locked critical section**: the hard cap (**max 5 pending**) can
@@ -116,7 +112,7 @@ pointer, even a one-line dictated fact.
       - Write **nothing** - no raw doc, no pointer. The capture is **refused, not parked** (parking
         it anyway would breach the cap).
       - Return a **`BLOCKED`** result carrying `N` and the **verbatim note text** to echo, for step
-        8's echo-and-offer. (The composed raw-doc draft is just discarded - it is re-derivable from
+        7's echo-and-offer. (The composed raw-doc draft is just discarded - it is re-derivable from
         the chat.)
    4. **Otherwise land it (`N < 5`)** - still under the lock:
       - If the brain has an upstream remote, `git pull --ff-only` first (a local-only brain has
@@ -137,7 +133,7 @@ pointer, even a one-line dictated fact.
       - **Release the lock** (`bash <brain-lock.sh> release <brain-path> "<nonce>"`).
       - Return a **`LANDED`** result: `logged -> <tag or "inbox"> (<N+1> pending, <M> substantive)`.
 
-8. **Report (and prod at the threshold).**
+7. **Report (and prod at the threshold).**
    - **On `LANDED`:** surface the one-line confirmation and nothing more - **unless the landed count
      is exactly 5.** At 5 the inbox is now full: add a **strong prod** - the *next* capture will be
      blocked until a `refine` drains the tail - and offer to run `refine` now. Below 5 the count
@@ -148,7 +144,7 @@ pointer, even a one-line dictated fact.
      - **offer:** *"That's 5 pending, so capture is blocked until you refine. Want me to refine now,
        then capture this for you?"*
      - **If they accept:** run `brrain:refine` in this session; **after** it lands and the watermark
-       drops the count, **re-capture the held note** (back through step 7 - it now lands as the new
+       drops the count, **re-capture the held note** (back through step 6 - it now lands as the new
        pending #1). Capture-**after** the drain, never folded into the refine pass itself.
      - **If they decline:** leave the note text sitting in the chat for them to re-issue (e.g. after
        refining in another of their tabs). Nothing is written; the note is safe in the transcript.
