@@ -31,11 +31,14 @@ this skill never drifts.
 1. **Precondition.** Read the active brain's path from the engine registry at
    `~/.brrain/registry.json` (its `active` field). If the registry is missing or has no active
    brain, **stop** and tell the user to run `brrain:setup` first - do not guess a path. Otherwise `cd` into
-   that path; if the brain has an upstream remote, `git pull --ff-only` first (freshness; a
-   local-only brain has none, so skip), then read the brain's `RULEBOOK.md`. Also resolve the shared
-   lock helper `${CLAUDE_PLUGIN_ROOT}/scripts/brain-lock.sh` - audit takes that mutex **once,
-   briefly, around the land-commit** (step 5), so its git write cannot race another tab's. The
-   read-only detection (step 3) and the human gate (step 4) hold **no lock**.
+   that path. **Freshness pull:** run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/brain-pull.sh <brain-path>`
+   (it does the `git pull --ff-only` and is a no-op for a local-only brain); a **non-zero exit means
+   the brain is behind the remote and could not fast-forward** - surface the helper's message and
+   **stop** rather than audit a stale base (no lock is held yet at this step). Then read the brain's
+   `RULEBOOK.md`. Also resolve the shared lock helper
+   `${CLAUDE_PLUGIN_ROOT}/scripts/brain-lock.sh` - audit takes that mutex **once, briefly, around the
+   land-commit** (step 5), so its git write cannot race another tab's. The read-only detection (step
+   3) and the human gate (step 4) hold **no lock**.
 
 2. **Fix the scope.** Bare `audit` is a **whole-corpus sweep**. `audit on <subject>`
    scopes to one page/subject and its backlinkers. Default to the sweep unless the user named a
