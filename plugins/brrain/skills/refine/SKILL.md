@@ -69,15 +69,16 @@ gather-time set).
    4. **Release:** `bash <brain-lock.sh> release <brain-path> "$nonce"`. Drafting and the gate hold
       no lock.
 
-3. **Draft in a subagent (clean context) - unless the small-batch fast-path applies.** **Inline
-   fast-path:** when the consume set is small (~1-3 entries), the raw docs are short, and the routed
-   touch-set is a page or two - or this very session produced the capture, so the parent already
-   holds its content - draft **inline in the parent** instead of spawning: the subagent's value here
-   is context hygiene, not capability, and on a tiny pass its from-scratch re-read is pure overhead
-   (measured: ~88K subagent tokens on a 1-entry refine). Follow exactly the same drafting rules
-   (3.1-3.5 below) and produce the same per-page-block summary for the gate. Spawn as usual when the
-   batch is bigger, the raw docs are heavy, or the session context is already crowded. When
-   spawning, hand the subagent: the list of pending raw-doc paths,
+3. **Draft in a subagent (clean context) - context-primed on small batches.** Always draft in the
+   subagent: its value is clean context AND a quiet ritual - the drafting mechanics stay out of the
+   user's session, and that experience value stands even when the parent holds the content (a fully
+   inline draft was tried and reverted same-day: it floods the user's session with tool noise). On a
+   **small batch** (~1-3 short entries routing to a page or two, or captures this very session
+   produced so the parent already holds their content), **prime the spawn** instead: pass the
+   raw-doc BODIES, the routing you already know, and any relevant page excerpts directly in the
+   subagent prompt, and instruct it not to re-read what it was handed - a from-scratch re-read of
+   parent-held content is pure overhead (measured: ~88K subagent tokens on a 1-entry refine).
+   Otherwise hand the subagent: the list of pending raw-doc paths,
    the active brain's path, the current `index.md` contents, and the brain `RULEBOOK.md`.
    refine is the trust gate's heavy synthesis (routing facts, reconciling supersession, writing
    canonical prose), the one brrain op that earns the **strongest reasoning tier** - express that as
