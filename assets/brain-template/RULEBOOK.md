@@ -262,6 +262,13 @@ Both are therefore **gated, not immediate**: landing (a commit, and a push when 
 remote) follows approval, never precedes it - the opposite of capture, which lands immediately
 because the inbox is untrusted staging.
 
+**The gate is not a lab.** Feedback about the gate or the ritual *itself* (its prompts, pacing,
+presentation) is noted and applied **after** the pass lands - never by reworking doctrine, skills, or
+the engine mid-review. Finish the current pass in the established flow, change the procedure in its
+own pass afterward, and shake the change out on a throwaway run before a real one. This rule lives
+here, in the brain's own rulebook, precisely so it binds every agent, machine, and user that operates
+the brain - it must never depend on any one agent's local memory.
+
 ## Page layering (settled head, open threads, history off-page)
 
 A canonical page is structured by **settledness, not chronology**, so a reader - human or `recall` -
