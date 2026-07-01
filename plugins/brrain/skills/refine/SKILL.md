@@ -32,6 +32,16 @@ each walked question is answered), `gate-decision <approve|edits|reject>` (the l
 `land-done` (after the step-5 commit or the step-6 discard). Telemetry only - never let a stamping
 failure block or delay the pass, and never hold the lock for it.
 
+**Async draft-ahead (invocation mode).** On explicit request ("draft the refine in the background",
+"refine draft-ahead"), run steps 2-3 **in the background** while the session continues: the
+background run does the locked gather (brief, step 2), then drafts into the working tree lock-free
+(per the two-brief-locks rule), stamps its own `draft-start`/`draft-end` beats, and announces when
+the map is ready; present the gate (step 4) whenever the user returns to it. The user then pays only
+gate time, whatever the draft took. Guards: **one draft-ahead at a time** (a second would collide in
+the working tree); do not start an `audit` or another refine while a draft sits ungated in the tree;
+a capture landing mid-draft is safe (append-only below the watermark, and the land consumes only the
+gather-time set).
+
 1. **Precondition.** Read the active brain's path from the engine registry at
    `~/.brrain/registry.json` (its `active` field). If the registry is missing or has no active
    brain, **stop** and tell the user to run `brrain:setup` first - do not guess a path. Otherwise
@@ -59,7 +69,15 @@ failure block or delay the pass, and never hold the lock for it.
    4. **Release:** `bash <brain-lock.sh> release <brain-path> "$nonce"`. Drafting and the gate hold
       no lock.
 
-3. **Draft in a subagent (clean context).** Hand the subagent: the list of pending raw-doc paths,
+3. **Draft in a subagent (clean context) - unless the small-batch fast-path applies.** **Inline
+   fast-path:** when the consume set is small (~1-3 entries), the raw docs are short, and the routed
+   touch-set is a page or two - or this very session produced the capture, so the parent already
+   holds its content - draft **inline in the parent** instead of spawning: the subagent's value here
+   is context hygiene, not capability, and on a tiny pass its from-scratch re-read is pure overhead
+   (measured: ~88K subagent tokens on a 1-entry refine). Follow exactly the same drafting rules
+   (3.1-3.5 below) and produce the same per-page-block summary for the gate. Spawn as usual when the
+   batch is bigger, the raw docs are heavy, or the session context is already crowded. When
+   spawning, hand the subagent: the list of pending raw-doc paths,
    the active brain's path, the current `index.md` contents, and the brain `RULEBOOK.md`.
    refine is the trust gate's heavy synthesis (routing facts, reconciling supersession, writing
    canonical prose), the one brrain op that earns the **strongest reasoning tier** - express that as
@@ -118,10 +136,15 @@ failure block or delay the pass, and never hold the lock for it.
    - the per-page blocks - as the **orientation map**, so the user sees the whole change-set with
    each change read against its page's gloss. Offer to show the raw `git diff` on request. Then
    **walk the open questions one at a time** (the rulebook's gate-review convention):
-   - Take each open item (gap question, flagged `Agent` claim) **singly** through a
-     structured-choice prompt - one as-simple-as-possible question at a time (a yes/no or a short pick), in the spirit of a
-     step-by-step wizard, never one prompt that asks for everything. For an `Agent`-claim
-     confirmation, make **`WIP / not-settled` a first-class option** (alongside confirm / drop) -
+   - Resolve the open items through structured-choice prompts **tiered by stakes** (prompts are not
+     free - measured: each round trip costs roughly a minute of wall-clock including think time, and
+     the walk grows linearly with question count): **batch low-stakes items** (routine `Agent`-claim
+     confirmations whose likely answer is a plain confirm, simple factual gaps) a few to a grouped
+     prompt (~3-4 max, each independently answerable - rubber-stamp-shaped items only); walk
+     **high-stakes items** (reversals, WIP-vs-settled calls, nuanced gaps, anything whose answer
+     plausibly changes the draft) **one at a time**, as-simple-as-possible, in the spirit of a
+     step-by-step wizard - never one prompt that asks for everything. For an `Agent`-claim
+     confirmation (batched or single), make **`WIP / not-settled` a first-class option** (alongside confirm / drop) -
      flagged claims are often in-flight ideation, and `WIP` resolves to a `> needs:` marker, not a
      canonical assertion. **Every question carries a standing free-text escape** so the user can give
      an extended answer, and when an item cannot be reduced to options (a nuanced reversal, a "tell

@@ -359,11 +359,14 @@ At the end of a committed pass, **nudge `audit`** if the corpus looks due for an
 grown, or `log.md` shows no recent `audit`) - a soft nudge like the `(N pending refine)` count,
 not a gate.
 
-### The gate review - map first, then walk the questions one at a time
+### The gate review - map first, then a stakes-tiered walk
 
 The gate review has two beats: an **orientation map** (the whole change-set, shown once) and then a
-**one-at-a-time walk** of the open questions. Do **not** dump the map and ask for everything in one
-prompt - it should feel like a step-by-step wizard, not a wall to react to.
+**stakes-tiered walk** of the open questions. Do **not** dump the map and ask for everything in one
+prompt - it should feel like a step-by-step wizard, not a wall to react to. But prompts are not free
+either (measured: each structured-prompt round trip costs roughly a minute of wall-clock including
+think time, and the walk grows linearly with question count) - spend them where the judgment is,
+never on rubber-stamps.
 
 **1. The map - self-orienting per-page blocks.** Shape the summary so the user can **judge each change
 without first remembering what the page is about**. Present it as **one block per affected page**
@@ -383,10 +386,16 @@ without first remembering what the page is about**. Present it as **one block pe
 After the blocks, a short **footer** holds only what is not page-scoped: the **watermark target**
 (the last-consumed entry's date), and the `audit` nudge if one is due.
 
-**2. The walk - one simple question at a time.** After the map, take the open items (gap questions,
-`Agent`-claim confirmations) **one at a time** through a structured-choice prompt - each a single,
-as-simple-as-possible structured question (a yes/no or a short pick), never one prompt that asks for
-everything. For an **`Agent`-claim confirmation**, offer **`WIP / not-settled` as a first-class
+**2. The walk - stakes-tiered, never a wall.** After the map, resolve the open items through
+structured-choice prompts, **tiered by stakes**:
+- **Low-stakes items** - routine `Agent`-claim confirmations whose likely answer is a plain confirm,
+  and simple factual gaps - are **batched a few to a grouped prompt** (~3-4 max, each independently
+  answerable, e.g. a "confirm these" pick list). Batch only rubber-stamp-shaped items; anything that
+  needs real thought is not low-stakes.
+- **High-stakes items** - reversals, WIP-vs-settled calls, nuanced gaps, anything whose answer
+  plausibly changes the draft - stay **one at a time**, each a single as-simple-as-possible
+  structured question (a yes/no or a short pick). Never one prompt that asks for everything.
+For an **`Agent`-claim confirmation** (batched or single), offer **`WIP / not-settled` as a first-class
 option** (alongside confirm / drop), not something the user must reach for via the escape - a flagged
 claim is often in-flight ideation, and `WIP` resolves to a `> needs:` marker on the page rather than
 a canonical assertion. **Every question carries a standing free-text escape** so the user can give an
@@ -395,8 +404,8 @@ reversal, a "tell me the backstory" gap) **pose it directly as an open question*
 a choice. Fold each answer into the drafted working-tree pages as you go (gate-time curation, not
 capture; a gap the user cannot answer, or a claim the user marks `WIP`, stays as `> needs:`). The **final landing decision** is its own
 structured-choice prompt (Approve and push / Request edits / Reject and discard) - the last step of the
-walk; the decision is per-batch (one approve lands the pass) even though the questions were walked
-singly.
+walk; the decision is per-batch (one approve lands the pass) even though the questions were resolved
+item-by-item.
 
 ### Routing a fact to a page ("earn it")
 
