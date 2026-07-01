@@ -119,7 +119,7 @@ content**, not who invoked the capture.
 When in doubt, tag `Agent`. Over-scrutiny at refine is cheap; a confabulation that slips in as
 ground truth is not.
 
-### The wrap-up capture nudge (manual-but-nudged)
+### The capture nudge (durable-moment + wrap-up, manual-but-nudged)
 
 Capture is **manual** - but not unaided. An earlier design auto-captured *every* finished session
 through a SessionEnd-enqueue / SessionStart-drain pipeline; it was **reverted** because it
@@ -128,10 +128,11 @@ the machine would grab everything, the user stopped invoking `remember` even whe
 while flooding the `refine` gate with low-quality volume. The deliberate act of capturing **is** the
 signal filter; that is the point.
 
-The successor is **manual-but-nudged**: the agent **offers** `remember` at a natural wrap-up, but only
-when the session actually produced something durable. On yes it flows through the **normal** capture
--> `refine` path - normal provenance, **no separate tier**, no special capture flag. It is
-an ordinary manual capture that the agent happened to suggest.
+The successor is **manual-but-nudged**: the agent **offers** `remember` when the session produces
+something durable, firing at the **first of two moments - the durable moment (mid-session, the instant
+that durable thing crystallizes) or a natural wrap-up (the backstop)**. On yes it flows through the
+**normal** capture -> `refine` path - normal provenance, **no separate tier**, no special capture flag.
+It is an ordinary manual capture that the agent happened to suggest.
 
 - **The judgment gates the OFFER, not the capture.** The agent decides "is this durable?" to decide
   whether to *speak up* - never to decide what may be parked. A misjudged offer costs one "no thanks"
@@ -144,14 +145,39 @@ an ordinary manual capture that the agent happened to suggest.
   routine - not because the offer should be shy. When the durable signal is genuinely real, offer with
   confidence: that is what rebuilds the habit the auto-pipeline eroded. Lean strict on the
   durable-vs-routine line; do not lean quiet on a real finding.
-- **Discipline.** At most **one** offer per session; never re-offer once the user has captured this
-  session; if the user declines, drop it. Name the thing in a single line so the offer is concrete.
+- **Fire at the durable moment, not only at wrap-up.** A single wrap-up trigger misses the sessions
+  that end **abruptly** or **switch devices** - exactly when the source chat is stranded on a machine
+  the user no longer has, the costliest miss (a missed capture, not just a delayed one). So raise the
+  offer **the instant a durable thing crystallizes mid-session**; the wrap-up firing stays as the
+  backstop for whatever was not already offered. (The auto-push remote already syncs every capture, so
+  cross-device is not a separate problem - the only real failure is not capturing at all.)
+- **Discipline.** At most **one** offer per session - the durable-moment and wrap-up triggers **share
+  the single offer** (fire whichever comes first; never offer twice); never re-offer once the user has
+  captured this session; if the user declines, drop it. Name the thing in a single line so the offer is
+  concrete.
 
 A SessionEnd hook cannot converse, so the offer can only be **the agent's own in-context behavior**. The
 brrain engine primes it from `inject-index.sh` (the kept SessionStart preamble): whenever a brain
-exists on the device - **even a cold, empty one** - the preamble instructs the agent to run this nudge at
-wrap-up. Reviving auto-capture itself needs a named, concrete pain, never the automation impulse
-alone.
+exists on the device - **even a cold, empty one** - the preamble instructs the agent to run this nudge
+**both at the durable moment (mid-session) and at wrap-up**. Reviving auto-capture itself needs a
+named, concrete pain, never the automation impulse alone.
+
+### Wrap-up maintenance nudges (refine-due, audit-due)
+
+Capture is **unbounded** - there is **no hard cap**; a capture is never refused. Backpressure toward
+synthesis is instead two **soft** nudges the agent raises at a natural **wrap-up** (never blocking, at
+most alongside the capture offer):
+
+- **refine-due (depth/age).** If the pending inbox tail below the watermark looks deep or stale, nudge
+  *"N pending, oldest D days - refine?"* (rough trigger: **>~7 pending, or the oldest >~10 days**;
+  tunable). refine is incremental (`O(new)`), so a large pile is cheap - the nudge is about keeping the
+  canonical layer current, not about relieving a bound.
+- **audit-due (age/change).** If it has been a while since the last `audit`, or many pages changed
+  since, nudge *"N days / M pages changed since the last audit - run audit?"* (rough trigger:
+  **>~14 days, or >~10 pages changed**). See "The audit operation -> Invocation".
+
+Both are computed on demand at wrap-up (from `inbox.md`, `log.md`, and `git log`); neither is a gate or
+a scheduled autonomous run.
 
 ## What is worth capturing (brain-worthy criteria)
 
