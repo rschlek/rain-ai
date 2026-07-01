@@ -59,8 +59,9 @@ this skill never drifts.
         the page;
       - **page vs `index.md`** gloss (desync - a gloss that points at a missing page, a page missing
         from the index, or a gloss that misstates the page);
-      - **page vs the rulebook** - `RULEBOOK.md` / `requirements.md` are **trusted reference**: when a
-        page's claim contradicts the rulebook, the **page loses** (it is the stale one);
+      - **page vs the rulebook** - `RULEBOOK.md` is **trusted reference** (there is no
+        `requirements.md` - it is retired): when a page's claim contradicts the rulebook, the **page
+        loses** (it is the stale one);
       - **orphan pages** (in the corpus, nothing links to them) and **rename-orphaned links** (a
         dangling `[[slug]]` whose target exists under a new slug - a rename that backlink-by-grep
         missed). A dangling link to a slug that **never** had a page is **interview's gap, not
@@ -79,8 +80,16 @@ this skill never drifts.
         hoarding resolved items** are **flag-only** (settled-vs-history is judgment - a wrong auto-fix
         would delete real settled knowledge).
       - **index scaling-trigger** (detector, not a fix) - if the flat `index.md` is past **~16 KB or
-        ~80 pages**, **nudge** a gated re-shard (the shard is a refine-class restructure, never an
-        audit auto-fix). See the rulebook's "`index.md` -> Scaling ladder".
+        ~80 pages**, **nudge** a gated re-shard (an audit-class restructure - audit owns restructuring -
+        never an auto-fix). See the rulebook's "`index.md` -> Scaling ladder".
+      - **page-fatness trigger** (detector, not a fix) - check **every** page against the fatness
+        threshold (**>~12 KB or >~8 `## H2` sections**). For each page over it, **flag** it with a
+        proposed **split map**: the thin hub keeps its settled head + a `## Subpages` router-list, and
+        each cluster of related sections becomes a hub-prefixed peer page (`<hub>-<facet>`) that lands
+        the hub and every peer back under threshold. The map also proposes, per item, which
+        `external:` refs migrate to a peer (facet-specific) vs stay on the hub (whole-subject). This is
+        a **detector only** - draft nothing; the split is a gated fix-class executed on the user's yes
+        (step 4). See the rulebook's "Page-fatness detector and the page-split fix-class".
    3. **Classify every finding** into two response classes:
       - **auto-fixable (draft it):** index/page desync, **clean dated supersession** (same subject,
         a newer-dated fact the page never folded in - apply the rulebook's graded-supersession rule),
@@ -90,14 +99,20 @@ this skill never drifts.
         **genuine contradictions** with no clear temporal winner, **stale claims**, **malformed
         `external:` entries** (the brain cannot guess the right value), and **layering violations**
         (history narrated on-page, WIP-as-settled, `## Open threads` hoarding resolved items). The
-        **index scaling-trigger** is reported as a nudge, not a fix.
+        **index scaling-trigger** is reported as a nudge, not a fix. **Fat pages** are flagged with
+        their proposed **split map** - the split is a gated fix-class drafted only on the user's yes
+        (step 4), never in this detection pass.
    4. **Draft the auto-fixable changes into the working tree. Commit nothing.** Leave flag-only
       findings undrafted (they need the gate).
    5. Return a **structured findings summary only** (not page contents):
       - **fixes drafted** - each with a one-line what-changed and which page;
       - **contradictions** - each as "page A says X vs page B says Y", for gate adjudication;
       - **orphans / stale claims** - flagged for the user's decision;
+      - **fat pages** - each with its size / H2 count and its proposed **split map** (thin hub +
+        named peers, which section-clusters go where, proposed `external:` migrations), for the
+        per-page split decision at the gate;
       - **`> contested:` cleared** this pass;
+      - **nudges** - index scaling-trigger and audit-due (age/change), if any;
       - the set of pages touched.
       If the sweep found **nothing**, return a clean bill of health.
 
@@ -110,8 +125,27 @@ this skill never drifts.
      citing the dissenting page; the pass still commits with the marker in place.
    - **Orphans / stale claims.** Apply their decision (link, merge, retire, rewrite) directly to the
      working-tree pages.
-   - Apply small edits yourself; only re-invoke the subagent if a change genuinely needs a re-read.
-     Re-present and loop. The review is per-batch, not finding-by-finding.
+   - **Fat pages - the page-split fix-class (drafted only on yes).** For each flagged fat page, show
+     its **split map** and ask **per page**: split now / defer / leave as-is (a standing free-text
+     escape too). Detection drafted nothing, so on **defer** or **leave** nothing changes for that
+     page. On **split**:
+     1. **Draft the split into the working tree** (re-invoke the subagent for the heavy move so page
+        contents stay out of your context): create each hub-prefixed peer page (own frontmatter +
+        layered head), move its section-clusters off the hub, thin the hub to its settled head + a new
+        **`## Subpages`** router-list (`- [[peer]] - gloss` per peer), and add each peer's **`index.md`
+        router line**. Peers are flat first-class pages (own index line), never a sub-tier.
+     2. **`external:` refs follow their subject** - confirm each proposed migration (facet-specific ref
+        -> its peer) one at a time; whole-subject refs stay on the hub. Judgment, so gate-confirmed,
+        never auto-applied.
+     3. **Inbound `[[hub]]` backlinks stay on the hub by default** (the hub routes onward via
+        `## Subpages`, so nothing breaks). Offer per-link repoints to a specific peer only if the user
+        asks - it is judgment with **no cheap undo**, so the default is no-op.
+     4. A split is the **least-reversible** change here, so it takes its **own explicit approval** at
+        the landing step - never fold it silently into a blanket "approve all". Record it in full in
+        `log.md` (hub, peers created, section moves, ref migrations, any repoints, threshold crossed).
+   - Apply small edits yourself; only re-invoke the subagent if a change genuinely needs a re-read
+     (the page-split draft is exactly such a re-read). Re-present and loop. The review is per-batch,
+     not finding-by-finding - **except** a page split, which is confirmed per-page before it is drafted.
    - **Put the final landing decision through a structured-choice prompt** (the
      irreversible landing moment - a commit, pushed/published when the brain has a remote), options along the lines of **Approve
      and land** / **Request edits** / **Reject and discard**. An unprompted clear "approve and land
@@ -124,7 +158,9 @@ this skill never drifts.
       before stopping if any step below fails.
    1. **Write the `log.md` entry** (one narrative entry per committed pass; format in the rulebook):
       pages touched (flat slugs), fixes applied, supersessions reconciled, contradictions resolved vs
-      `> contested:` planted, and `> contested:` cleared.
+      `> contested:` planted, `> contested:` cleared, and **any page split in full** (hub, peers
+      created + their index lines, section-clusters moved, `external:` refs migrated, inbound backlinks
+      repointed, and the threshold that fired it) - a split's off-page history has no other home.
    2. `git add` the changed pages, `index.md`, and `log.md`; **one commit** with a readable summary;
       then **`git push`** if the brain has an upstream remote (a local-only brain just keeps the
       commit local).
@@ -160,6 +196,12 @@ this skill never drifts.
   absence). A contradiction is a clash of two present facts; audit plants the marker on defer
   and clears it on a later pass. `recall` surfaces a `> contested:` marker for free when it reads
   the page; `interview` does not harvest it (a clash is not an absence).
-- **Invocation is manual and attended** on the fix side (like refine). The proactive trigger is a
-  `refine`-end nudge, not an autonomous run - detection is read-only and safe, but the fix path stays
-  gated and deliberate.
+- **Invocation is manual and attended** on the fix side (like refine) - detection is read-only and
+  safe, but the fix path stays gated and deliberate, never an autonomous run.
+- **audit has its OWN age/change nudge, decoupled from the refine-end nudge.** Now that audit is the
+  safety-critical >1-hop supersession backstop and owns restructuring, it can no longer depend on a
+  refine happening to be nudged. The independent trigger fires at a **natural wrap-up**: when the brain
+  is due - roughly **>~14 days since the last `## [date] audit` in `log.md`, or >~10 canonical pages
+  changed since** (per `git log` over the wiki pages; tunable) - nudge *"N days / M pages changed since
+  the last audit - run audit?"*. The `refine`-end nudge stays as a **secondary** trigger. See the
+  rulebook's "The audit operation -> Invocation".

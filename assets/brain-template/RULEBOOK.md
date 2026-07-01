@@ -281,11 +281,14 @@ carry that before -> after and the why** (see `log.md` below), because the page 
 holds the diff but not the reasoning. To trace a subject's journey, `grep <slug> log.md` + `git blame`
 the page.
 
-> **Splitting vs layering.** Layering de-narrates *within* a page; **splitting** (per "earn it" below)
-> de-overloads *across* pages when one page carries too many subjects. They are orthogonal - a page can
-> be cleanly layered and still want splitting. Splitting is the page-tier analog of `index.md` sharding
-> (the same "partition by natural cluster, route to the pieces" move) and is an earn-it-per-page
-> judgment, not a blanket rule.
+> **Splitting vs layering.** Layering de-narrates *within* a page; **splitting** de-overloads *across*
+> pages when one page has grown into a **hub** carrying many durable sub-subjects. They are orthogonal -
+> a page can be cleanly layered and still want splitting. Splitting is the page-tier analog of
+> `index.md` sharding (the same "partition by natural cluster, route to the pieces" move). It is
+> **size-bounded and audit-owned**: `audit`'s fatness detector flags a page over **~12 KB / ~8 H2** and
+> proposes a split into a thin hub + peer pages, always gated - see **"Page-fatness detector and the
+> page-split fix-class"** under *The audit operation*. (`refine` no longer splits; restructuring is
+> audit's.)
 
 ## The refine operation
 
@@ -356,7 +359,10 @@ each fact distilled from a raw doc, route it - check `index.md` first:
    or join a broad **`overview`** page for its domain (e.g. `acme.md`).
 
 A passing one-off mention does **not** earn its own page - it stays a line and **graduates**
-later once it accretes. Bias toward fewer, denser pages: structure must earn its place. A
+later once it accretes. The sizing doctrine is **size-bounded**: keep a subject dense on **one** page
+until it grows into a **hub** carrying many durable sub-subjects, then `audit` splits it into a thin
+hub + peers (see "Page layering -> Splitting vs layering"). Structure still must **earn its place** - a
+new page, or a peer produced by a split, has to clear the stable-subject bar. A
 multi-subject fact ("John owns the website's content migration") lives once, on its **primary
 subject's** page (where you would look for it - here `website.md`), and the other subject gets a
 `[[backlink]]`, never a restatement. Single source of truth: each fact has exactly one canonical
@@ -616,10 +622,20 @@ model's unprompted salience" rule applies to anything intrusive, and an intervie
 (above): it sweeps the canonical wiki pages for **inconsistency** - the LongMemEval knowledge-rot
 failure mode - drafts the unambiguous fixes, and flags the rest under the user's review. It hunts
 **inconsistency**, the complement to `interview`'s hunt for **absence**. Where `refine` is **intake**
-(inbox -> pages), audit is **introspection** (pages -> pages): it audits the
+(inbox -> pages), audit is **introspection + restructuring** (pages -> pages): it audits the
 **already-canonical** layer and therefore **never reads the pending inbox tail** (that is refine's
 job). The orchestration - a clean-context subagent audits, the parent runs the gate - lives in the
 `audit` skill; this section is the **conventions** that skill follows.
+
+**audit OWNS all restructuring.** refine is now pure **intake** (distil the inbox into pages, shallow
+and incremental); every operation that reshapes the *already-canonical* layer - **page splitting**,
+index re-sharding, page merge/retire/rename, and the deep supersession reconcile - belongs to audit,
+the one operation that sweeps the whole corpus. Two consequences make audit **safety-critical**, not
+just hygiene: (1) it is the **deep >1-hop supersession backstop** - incremental refine only catches
+direct 1-hop effects at the gate, so a newer fact that supersedes a claim two or more hops away is
+audit's to catch; (2) it owns the **page-fatness detector + split fix-class** (below), the keystone of
+the size-bounded page doctrine. Because audit is now more important **and** fired more often, it gets
+its **own** age/change nudge, decoupled from the refine-end nudge (see **Invocation**).
 
 ### What it audits (scope)
 
@@ -660,12 +676,84 @@ the gate for the user's call):
   loses.
 - **Index scaling-trigger (detector, not a fix).** Check the flat `index.md` size / page count against
   the sharding trigger (**~16 KB or ~80 pages**). If crossed, **nudge** ("index past the shard
-  threshold; consider a gated re-shard") - the shard is a gated refine-class restructure, never an audit
-  auto-fix. See **`index.md` -> Scaling ladder**.
+  threshold; consider a gated re-shard") - the shard is a gated **audit-class** restructure (audit owns
+  restructuring), never an auto-fix. See **`index.md` -> Scaling ladder**.
+- **Page-fatness trigger (detector, not a fix).** Check every page against the fatness threshold
+  (**>~12 KB or >~8 `## H2` sections**). A page over it is **flagged** with a proposed **split map**
+  (which section-clusters become which peers); the split itself is a **gated fix-class**, never an
+  auto-fix, and is **drafted only on the user's yes** - see **"Page-fatness detector and the page-split
+  fix-class"** below.
 - **Seam with `interview` on links.** A dangling `[[wikilink]]` to a subject that **never had a page** is
   **interview's gap** (absence) - leave it. An **orphan page** (the inverse) is audit's. A
   **rename-orphaned** link - a dangling `[[slug]]` whose target exists under a **new** slug (a rename
   backlink-by-grep missed) - is audit's: **repoint it**.
+
+### Page-fatness detector and the page-split fix-class
+
+**The doctrine (reversed).** The old rule was "bias toward fewer, denser pages." The rule now is
+**size-bounded: dense until a page becomes a hub, then split.** A page stays a single dense page for as
+long as it is one subject; once it has grown to carry a cluster of durable sub-subjects, it is a **hub**
+and audit splits it into a thin hub + one peer page per sub-subject. This is the page-tier analog of
+`index.md` sharding (partition by natural cluster, route to the pieces), and audit owns it.
+
+**The detector (read-only, every sweep).** Flag any page over the fatness threshold - **>~12 KB or
+>~8 `## H2` sections** (whichever first; tunable, not sacred). A flag is **not** a fix: it carries a
+proposed **split map** and nothing is drafted until the user says split.
+
+**The split map** (what the flag proposes):
+- The **thin hub** keeps its **settled head** (the current-truth paragraph about the subject as a
+  whole) plus a new **`## Subpages`** router-list section - one `- [[peer]] - one-line gloss` line per
+  peer, placed immediately after the head. It may also keep genuinely cross-cutting settled sections
+  that belong to no single peer.
+- Each **peer** gathers a **cluster of related `##` sections by durable sub-subject** - never 1:1 per
+  section, and a peer must clear the same "stable subject" bar as any page. The target: **every**
+  resulting page (hub and each peer) lands **back under the fatness threshold**.
+- Peers are **flat, first-class pages**: each gets its **own `index.md` router line**, its own
+  frontmatter (`kind:`, `updated:`, `external:`), and a layered head - reachable directly off the
+  index like any page (not a hidden sub-tier). Splitting therefore **feeds the one flat index**, and
+  the index scaling ladder (~16 KB / ~80 pages, rung 2) absorbs the resulting growth.
+- **Peer naming is hub-prefixed:** a `website.md` hub yields `website-content`, `website-launch`. This
+  is a naming *convention on a flat slug* for collision-resistance and discoverability - **never a
+  path** (`[[website-launch]]`, not `[[website/launch]]`), so backlink-by-grep is unchanged. If a facet
+  is genuinely an independent subject, it should be its own bare-named page reached by a normal
+  `[[link]]`, not produced as a peer.
+
+**Link and reference handling at the split:**
+- **`external:` refs follow their subject.** A ref about the *whole* subject (e.g. the project's task
+  list) **stays on the hub**; a ref specific to a *facet* (e.g. a task project tracking just that
+  facet's work) **migrates to that facet's peer**. "Which subject does this ref serve" is judgment, so
+  each migration is **confirmed at the gate** (like a backlink repoint), never auto-applied.
+- **Inbound `[[hub]]` backlinks stay on the hub.** The hub still exists and now **routes onward** via
+  `## Subpages`, so an existing `[[hub]]` link is never broken - at worst the reader takes one extra
+  hop (exactly like index -> page). Repointing an inbound link to a specific peer is an **optional,
+  per-link, gate-confirmed refinement** that **defaults to no-op**; it is judgment with **no cheap
+  undo**, so it only ever fires when the user asks for it.
+- **Outbound links inside a moved section travel with that section** to its peer (they live in the
+  prose that moved); the hub does not retain them.
+
+**Always gated, drafted-on-yes, per-page approval.** The split is the largest, least-reversible
+canonical change audit makes, so:
+1. The detector only **flags** fatness and shows the split map in the findings summary - cheap, every
+   sweep. It drafts nothing.
+2. The heavy drafting (create peers, move section-clusters, write `## Subpages`, add `index.md` lines,
+   apply confirmed ref migrations / backlink repoints) happens **only after the user says "split this
+   one"** at the gate - drafted into the working tree, committed only on approval.
+3. A split gets its **own explicit approval**, never folded into a blanket "approve all" batch. It has
+   **no cheap undo** once landed (the peers exist, sections have moved), so it is deliberate.
+
+**Recursion is uniform.** The detector applies to **every** page, peers included. A peer that later
+crosses the threshold is split exactly like any hub - it becomes a hub itself, its sub-peers prefixed
+off *its* slug (`website-launch` -> `website-launch-marketing`). No special-casing and no nesting cap;
+clustering + the size-bound keep chains shallow in practice.
+
+> **Deferred: merge-back (un-split).** The *inverse* - automatically recombining a hub whose peers
+> have over-shrunk, or folding a withered peer back in - is **not built**. Refers to: a hub + its peers
+> collectively falling back under threshold, or a peer decaying to a near-empty stub, after
+> supersession/removal has thinned them over time. **Why deferred:** it is not in the settled design;
+> audit's existing **thin-page / orphan / stale-claim flags** already surface the symptoms for the user
+> to fold back by hand at the gate; and merge is pure judgment with no cheap undo, so automating it
+> earns nothing over a flag. **Named trigger to build it:** only if over-splitting proves to actually
+> bite in practice.
 
 ### The `> contested:` marker
 
@@ -697,11 +785,32 @@ biweekly). Repointed 1 rename-orphaned link. Flagged: orphan page old-notes.md (
 planted the launch-scope clash on website.md. Cleared: 1 prior contested on john.md.
 ```
 
+**A page split is recorded in full** (it is the least-reversible change and off-page history is its
+only home): the hub, each peer created with its `index.md` line, which section-clusters moved to which
+peer, each `external:` ref migrated (from -> to) and each inbound backlink repointed (from -> to), and
+why the split fired (which fatness threshold it crossed). Example: `Split website.md (over threshold)
+into thin hub website.md + peers website-content, website-launch. Moved <sections>. Migrated external
+ref X to website-launch. Left all inbound [[website]] backlinks on the hub (no repoints).`
+
 ### Invocation
 
 **Manual and attended** on the fix side, like `refine` - it changes canonical knowledge, so it runs
-behind the gate and is never autonomous. Its proactive trigger is the **`refine`-end nudge** (above),
-not a scheduled run: detection is read-only and safe, but the fix path stays gated and deliberate.
+behind the gate and is never autonomous. Detection is read-only and safe, but the fix path stays gated
+and deliberate.
+
+**audit has its OWN age/change nudge, decoupled from the refine-end nudge.** Audit used to be prompted
+*only* at the end of a refine pass, which fails now that audit is the safety-critical >1-hop
+supersession backstop: if refine runs rarely, audit would never be nudged, and rot would accumulate
+unchecked. So audit gets an **independent** trigger computed from two signals:
+
+- **Age** - days since the last `## [date] audit` entry in `log.md`.
+- **Change** - canonical pages added or modified since that date (from `git log` over the wiki pages).
+
+When the brain is **due** - roughly **>~14 days since the last audit, or >~10 pages changed since**
+(tunable, not sacred) - nudge a run: *"N days / M pages changed since the last audit - run audit?"*
+This fires at a **natural wrap-up** (the same attended moment the capture nudge uses), so it does not
+depend on a refine happening. The **refine-end nudge stays** as a secondary trigger, but it is no
+longer audit's only path to attention. Both are soft nudges, never a gate or a scheduled autonomous run.
 
 ## External references (peer pointers on canonical pages)
 
@@ -746,7 +855,8 @@ external:
 
 **Page-level, not fact-level.** References belong to the page's *subject*, in frontmatter. There is no
 inline / section-level link syntax: if one page accumulates a distinct cluster of peers, that is the
-brain's standing signal to **split the page** (per "earn it"), not to add sub-page anchors.
+brain's standing signal to **split the page** (`audit`'s page-split fix-class - refs then follow their
+subject to the peers), not to add sub-page anchors.
 
 **One-directional (brain -> peer).** Only the brain stores the link; the peer stores no back-pointer.
 The reverse direction ("I'm in this Todoist project, what does the brain know?") is already free via
