@@ -49,5 +49,8 @@ osc52_clipboard_access = "write_only"
 
 [general]
 show_warning_before_quitting = false
+# snackbar_enabled = the Sticky Command Header (per Warp, issue #12865 - the key
+# name is misleadingly generic). false hides it.
+snackbar_enabled = false
 default_session_mode = "tab_config"
 default_tab_config_path = '{{DEFAULT_TAB_CONFIG_PATH}}'
