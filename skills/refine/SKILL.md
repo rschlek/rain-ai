@@ -23,6 +23,15 @@ authoritative rulebook for the conventions below (**page layering**, routing, su
 operation"**, **"Supersession (graded)"**, and **"`index.md`"** sections and follow them so this skill
 never drifts.
 
+**Instrumentation (always-on, cheap).** So the felt cost of a refine pass can be measured - where the
+minutes actually go, draft vs gate vs think time - stamp each beat of the pass: `mkdir -p
+~/.brrain/timing` once, then one `echo "$(date +%s) <event>" >> ~/.brrain/timing/refine.log` per
+beat. The beats: `run-start N=<pending count>` (at the step-2 gather), `draft-start` / `draft-end`
+(around the step-3 subagent), `gate-map-shown` (when the step-4 map is presented), `gate-q <n>` (as
+each walked question is answered), `gate-decision <approve|edits|reject>` (the landing choice), and
+`land-done` (after the step-5 commit or the step-6 discard). Telemetry only - never let a stamping
+failure block or delay the pass, and never hold the lock for it.
+
 1. **Precondition.** Read the active brain's path from the engine registry at
    `~/.brrain/registry.json` (its `active` field). If the registry is missing or has no active
    brain, **stop** and tell the user to run `brrain:setup` first - do not guess a path. Otherwise
