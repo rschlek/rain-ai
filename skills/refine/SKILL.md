@@ -58,9 +58,17 @@ never drifts.
    session runs on is the top tier available). Do **not** deliberately downgrade it for cost. The
    subagent must:
    1. Open each raw doc and distill its facts.
-   2. **Route** each fact per the rulebook's "earn it" rules (existing page -> append; stable
-      subject -> new flat page; else a line on the most-related page, or a domain `overview`
-      page). Keep one canonical home per fact; link from other subjects with `[[backlinks]]`.
+   2. **Bound the touch-set, then route (incremental - never sweep the corpus).** Route each fact
+      via `index.md`'s thin routers to its **candidate page(s)** per the rulebook's "earn it" rules
+      (existing page -> append; stable subject -> new flat page; else a line on the most-related page,
+      or a domain `overview` page). The **touch-set = the candidate page(s) + their 1-hop
+      `[[backlinkers]]`**: **open candidate pages in full**, but **read 1-hop backlinkers
+      settled-heads-only** (only to check the new fact does not contradict or supersede their head -
+      do not redraft a backlinker beyond a direct fix, and do not open its deep sections). **Read no
+      page outside the touch-set** - everything else is treated as settled (the watermark already
+      marks what is synthesized). This keeps refine **O(new), not O(corpus)**; deeper **>1-hop**
+      supersession effects are `audit`'s deep backstop, not refine's (rulebook "The bounded touch-set
+      (incremental)"). Keep one canonical home per fact; link from other subjects with `[[backlinks]]`.
       **If a distilled fact answers an existing `> needs:` marker on the page, remove that marker**
       as you add the fact - the gap is now filled. This closes the `interview` loop (interview harvests
       the marker and routes the answer back as a capture); surface every clear in the summary.
@@ -164,6 +172,10 @@ never drifts.
 - The subagent does the reading and drafting so the raw-doc contents never flood the user's
   session. The parent holds only the summary and the (small) working-tree pages it edits during
   revisions.
+- **refine is incremental, not a whole-corpus sweep.** It reads only the bounded touch-set (candidate
+  pages + 1-hop backlinkers, settled-heads-only) - `O(new)`, not `O(corpus)`. It is deliberately
+  shallow: it catches direct 1-hop effects at the gate; the deep `>1-hop` supersession reconcile and
+  all restructuring belong to `audit`. refine is pure intake and never sweeps the wiki.
 - **Two brief locks, never across the gate.** refine takes the `scripts/brain-lock.sh` mutex only
   twice - the gather (step 2) and the land-commit (step 5) - and releases it for the whole long
   human review in between. Holding it across the gate would freeze every other tab's captures for

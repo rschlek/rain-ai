@@ -294,10 +294,35 @@ the page.
 
 `refine` is the deliberate synthesis ritual and the first user of the **trust gate** (above): it
 reads the pending inbox pointers, opens their raw docs, and distills them into canonical wiki pages
-under the user's review. It is **manual** (the user invokes it) and **whole-tail** (it processes
-everything below the watermark in one pass). The orchestration - a clean-context subagent drafts,
-the parent runs the review - lives in the `refine` skill; this section is the
-**conventions** that skill follows.
+under the user's review. It is **manual** (the user invokes it) and **whole-tail** on the *inbox* (it
+processes every pending pointer below the watermark in one pass) - but **incremental** on the *page
+corpus* (it touches only a bounded neighborhood of pages, never sweeping the whole wiki; see "The
+bounded touch-set" below). `refine` is pure **intake**; all restructuring and the deep cross-corpus
+reconcile belong to `audit`. The orchestration - a clean-context subagent drafts, the parent runs the
+review - lives in the `refine` skill; this section is the **conventions** that skill follows.
+
+### The bounded touch-set (incremental)
+
+`refine` never re-reads or re-reasons the whole page corpus. That whole-corpus cost is the mega-hub
+tax (touching one fat hub pulls in its huge 1-hop closure); page-splitting (audit) shrinks each hub's
+closure, and this rule makes intake **O(new facts)**, not **O(corpus)**.
+
+- **Build the touch-set by routing, not sweeping.** For each fact distilled from the pending raw docs,
+  route it via **`index.md`** (the thin routers) to its **candidate page(s)** - the page(s) the fact
+  belongs on. The **touch-set** = those candidate pages **plus their 1-hop backlinkers** (the pages
+  that link to a candidate via `[[slug]]`).
+- **Read depth differs by role.** Open the **candidate pages in full** (they may be redrafted to fold
+  the fact in). Read the **1-hop backlinkers settled-heads-only** - just enough to check the new fact
+  does not contradict or supersede what their head asserts; do **not** redraft a backlinker beyond a
+  direct fix, and do **not** open its deep sections.
+- **Do not read outside the touch-set.** Every other page is **treated as settled** - the watermark
+  already marks what has been synthesized, and untouched pages are assumed consistent. No new state is
+  needed to track this.
+- **Deliberately shallow - audit is the deep backstop.** The bounded read catches **direct 1-hop
+  effects** at the gate. Deeper **>1-hop** supersession effects (a fact that invalidates a claim two or
+  more hops away) are **`audit`'s** job - audit is the whole-corpus deep-reconcile backstop (see "The
+  audit operation"). This accepts a slightly longer un-reconciled window between audits in exchange for
+  fast, cheap intake; that trade is intentional.
 
 ### The gate
 
