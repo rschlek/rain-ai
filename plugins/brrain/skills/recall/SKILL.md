@@ -34,16 +34,29 @@ then already in context, so the agent can see which pages exist); build and use 
    `~/.brrain/registry.json` (its `active` field). If the registry is missing or has no active
    brain, **stop** and tell the user to run `brrain:setup` first - do not guess a path. Otherwise `cd` into
    that path; if the brain has an upstream remote, `git pull --ff-only` first (freshness - a capture
-   from another device may be waiting; a local-only brain has none, so skip the pull), then read the
-   brain's `RULEBOOK.md`.
+   from another device may be waiting; a local-only brain has none, so skip the pull). **Throttle the
+   pull on autonomous calls:** when the agent invoked recall on its own and the repo fetched recently
+   (`.git/FETCH_HEAD` modified within ~10 minutes), skip the pull - recall is read-only, so the worst
+   case is a slightly stale read that the tail-grep discipline already tolerates; an explicit user
+   invocation may always pull. Then read **only** the rulebook sections recall runs on - **"The
+   recall operation"** and **"Page layering"** in the brain's `RULEBOOK.md`, never the whole file
+   (a measured ~-24% token cut at unchanged accuracy; locate the `##` headings and read those
+   sections).
 
 2. **Fix the question.** From the user's phrasing (or, on an autonomous call, the context that
    triggered the read) state the concrete question recall is answering. If it is genuinely
    ambiguous what they are asking, ask one clarifying question rather than guessing - but bias toward
    just answering with what you find.
 
-3. **Read in a subagent (clean context).** Hand the subagent: the question, the active brain's path,
-   and the brain `RULEBOOK.md`. recall is **retrieval plus one real judgment** (the
+3. **Read in a subagent (clean context) - unless the fast-path applies.** First check the **inline
+   fast-path** (validated - it skips the whole spawn cost when the spawn buys nothing): if the
+   `inbox.md` tail **below the watermark is empty** AND the answer is already in context or one hop
+   away (the injected index routes the question to at most ~2 pages whose settled heads answer it),
+   skip the subagent - read those heads directly, answer **canonical-only** (an empty tail is a
+   confirmed staging no-op), and continue at step 4. When in doubt (non-empty tail, broad question,
+   fat pages), spawn. Otherwise hand the subagent: the question, the active brain's path, and the
+   instruction to read **only** the `RULEBOOK.md` sections named in step 1 (never the whole file).
+   recall is **retrieval plus one real judgment** (the
    supersession-conflict check in 3.3) - a capable mid-tier model handles it well at a large
    cost/latency cut from the strongest tier. Express that as **intent**, name no specific model;
    **by default inherit the session model** so the choice never goes stale as the model lineup
