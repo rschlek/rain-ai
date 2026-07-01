@@ -4,10 +4,12 @@
 # WHY THIS EXISTS. Rainier runs ~6 Claude tabs against ONE local brain repo at
 # once. remember/refine/audit each read-modify-write shared files (inbox.md, the
 # canonical pages) and run git in that one repo. Without serialization two tabs
-# can both read "4 pending" and both append (breaking the hard cap of 5), or
-# collide on .git/index.lock, or clobber refine's whole-file watermark rewrite.
-# This mutex serializes the small critical sections that need it. Scope is ONE
-# device: cross-device push races are explicitly out of scope.
+# can collide on .git/index.lock, or clobber refine's whole-file watermark
+# rewrite (a read-modify-write of inbox.md). This mutex serializes the small
+# critical sections that need it. Scope is ONE device: cross-device push races are
+# explicitly out of scope. (There is no longer a pending cap - capture is
+# unbounded - so there is no count invariant to protect; the lock is purely for
+# git + watermark-rewrite serialization now.)
 #
 # WHY mkdir, NOT flock. Portability is the decider. macOS ships no `flock`
 # binary at all and Git Bash's is flaky; `mkdir` is atomic create-or-fail and

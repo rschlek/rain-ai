@@ -48,25 +48,42 @@ brain="${brain//\\//}"
 framed=$(cat <<'EOF'
 # The user's second brain (brrain)
 
-The user keeps a durable, git-backed second brain (brrain). It has two reflexes
-you help run - one to write, one to read.
+The user keeps a durable, git-backed second brain (brrain). It has two core
+reflexes you help run - one to write, one to read - plus light upkeep nudges.
 
-**Write at wrap-up (the capture nudge).** At a natural stopping point - when the
-user signals the session is done, or the work that mattered is finished - judge
-whether this session produced something durable that lives nowhere else
-queryable: a real decision and *why* it was made, a strategic reframe, an open
-question worth tracking, or a hard-won finding. If it did, offer ONCE to capture
-it: name the thing in a single line and ask whether they want it remembered (the
-remember skill). Default to silence - routine lookups, mechanical edits,
-status checks, and anything already recorded in a repo / calendar / task list
-get no offer. Most sessions are routine, so silence is the common case; but when
-the durable signal is genuinely real, offer with confidence - that is what keeps
-the deliberate-capture habit alive. The durable-vs-routine judgment gates the
-OFFER, not the capture: offer at most once per session, never re-offer once they
-have captured this session, and a misjudged offer costs only a "no thanks" (it
-never reaches canonical knowledge). On yes, invoke the remember skill normally,
-with normal provenance and no special tier - it parks the note and flows through
-the refine trust gate like any other manual capture.
+**Write when something durable lands - and again at wrap-up (the capture nudge).**
+Watch for the moment the session produces something durable that lives nowhere
+else queryable: a real decision and *why* it was made, a strategic reframe, an
+open question worth tracking, or a hard-won finding. Fire the offer at the FIRST
+of two moments: (1) the **durable moment** - right when that thing crystallizes
+mid-session, not only at the end - because an abrupt or device-switched ending
+means the wrap-up never comes and the source chat can be stranded on a machine you
+no longer have; and (2) a natural **wrap-up**, as the backstop if nothing was
+offered yet. When you spot it, offer ONCE to capture it: name the thing in a
+single line and ask whether they want it remembered (the remember skill). Default
+to silence - routine lookups, mechanical edits, status checks, and anything
+already recorded in a repo / calendar / task list get no offer. Most sessions are
+routine, so silence is the common case; but when the durable signal is genuinely
+real, offer with confidence - that is what keeps the deliberate-capture habit
+alive. The durable-vs-routine judgment gates the OFFER, not the capture: offer at
+most **once per session** (the durable-moment and wrap-up triggers share the one
+offer - never offer twice), never re-offer once they have captured this session,
+and a misjudged offer costs only a "no thanks" (it never reaches canonical
+knowledge). On yes, invoke the remember skill normally, with normal provenance and
+no special tier - it parks the note and flows through the refine trust gate like
+any other manual capture.
+
+**Keep it current (upkeep nudges at wrap-up).** Capture is unbounded - a note is
+never refused - so backpressure toward synthesis is a soft nudge, not a cap. At a
+natural wrap-up, do a quick upkeep check and raise at most a one-line SOFT,
+non-blocking nudge if the brain looks due (skip when clearly fresh; never a gate):
+- **refine-due** - if the pending inbox tail (below the watermark in inbox.md) is
+  deep or stale (roughly >~7 pending, or the oldest pending note >~10 days old),
+  offer to run refine (it synthesizes the pending notes into the canonical pages).
+- **audit-due** - if it has been a while since the last audit or many pages changed
+  since (roughly >~14 days, or >~10 pages changed, since the last "audit" entry in
+  the brain's log.md), offer to run audit (the consistency + restructuring sweep,
+  and the deep supersession backstop).
 EOF
 )
 

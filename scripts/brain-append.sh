@@ -10,10 +10,10 @@
 # writes are atomic per write at the OS level, so two tabs appending at once
 # cannot interleave-garble each other either.
 #
-# SCOPE. This is ONLY the safe-write primitive. It does NOT take the lock and does
-# NOT count pending pointers - the caller (remember) holds brain-lock around the
-# read-count-plus-append critical section. This helper just guarantees the append
-# itself is byte-safe and newline-clean.
+# SCOPE. This is ONLY the safe-write primitive. It does NOT take the lock - the
+# caller (remember) holds brain-lock around the append-plus-commit critical
+# section. This helper just guarantees the append itself is byte-safe and
+# newline-clean. (Capture is unbounded; there is no pending cap to count.)
 #
 # USAGE - pointer block is read from stdin (multi-line, no quoting headaches):
 #   printf '## [2026-06-25] tag (Me) raw/exhaust/foo.md\nthe one-line gist\n' \
