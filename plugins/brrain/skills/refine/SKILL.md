@@ -158,6 +158,10 @@ gather-time set).
      subagent if a change genuinely needs the raw source again (keeps your context clean).
    - Re-present the (updated) map and loop until the gate decision. The landing decision is
      **per-batch** (one approve lands the whole pass), even though the questions were walked singly.
+   - **The gate is not a lab** (rulebook "The trust gate"). If the user gives feedback about the gate
+     or ritual itself mid-review, note it, finish this pass in the established flow, and apply the
+     procedure change after the pass lands (shaken out on a throwaway run) - never rework doctrine,
+     skills, or the engine mid-gate.
    - **Put the final landing decision through a structured-choice prompt, not a
      free-text "Approve?" prompt.** Landing is the irreversible trust-gate moment (drafts become canonical - committed,
      and pushed/published when the brain has a remote), so make it an explicit, structured choice -
