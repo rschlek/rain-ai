@@ -136,15 +136,15 @@ gather-time set).
    - the per-page blocks - as the **orientation map**, so the user sees the whole change-set with
    each change read against its page's gloss. Offer to show the raw `git diff` on request. Then
    **walk the open questions one at a time** (the rulebook's gate-review convention):
-   - Resolve the open items through structured-choice prompts **tiered by stakes** (prompts are not
-     free - measured: each round trip costs roughly a minute of wall-clock including think time, and
-     the walk grows linearly with question count): **batch low-stakes items** (routine `Agent`-claim
-     confirmations whose likely answer is a plain confirm, simple factual gaps) a few to a grouped
-     prompt (~3-4 max, each independently answerable - rubber-stamp-shaped items only); walk
-     **high-stakes items** (reversals, WIP-vs-settled calls, nuanced gaps, anything whose answer
-     plausibly changes the draft) **one at a time**, as-simple-as-possible, in the spirit of a
-     step-by-step wizard - never one prompt that asks for everything. For an `Agent`-claim
-     confirmation (batched or single), make **`WIP / not-settled` a first-class option** (alongside confirm / drop) -
+   - Take each open item (gap question, flagged `Agent` claim) **singly** through a
+     structured-choice prompt - one as-simple-as-possible question at a time (a yes/no or a short pick), in the spirit of a
+     step-by-step wizard, never one prompt that asks for everything. Each walked question must map
+     **1:1 to a change just read in the map** - that pairing is what makes it judgeable; carry the
+     item's concrete context (the before -> after, its origin) into or right beside the question,
+     never bare labels. (Batching low-stakes items into grouped prompts was tried and reverted -
+     it strips the per-item context needed to judge canonicality; the ~1-min-per-question cost is
+     accepted.) For an `Agent`-claim
+     confirmation, make **`WIP / not-settled` a first-class option** (alongside confirm / drop) -
      flagged claims are often in-flight ideation, and `WIP` resolves to a `> needs:` marker, not a
      canonical assertion. **Every question carries a standing free-text escape** so the user can give
      an extended answer, and when an item cannot be reduced to options (a nuanced reversal, a "tell
