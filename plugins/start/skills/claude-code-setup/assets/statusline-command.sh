@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Claude Code statusline (shipped by the claude-code-setup skill)
 # Shows model, dir basename, git branch, and a color-coded context-usage
-# percentage aligned with the managed auto-compact threshold of 70%
-# (green < 50%, yellow 50-69%, bold red >= 70%).
+# percentage (green < 50%, yellow 50-69%, bold red >= 70%). The red band is
+# the signal to /compact or break out to a fresh session.
 
 # Read stdin JSON and flatten to a single line so field:value pairs can't be
 # split across lines by pretty-printing. No jq dependency (fresh Git Bash

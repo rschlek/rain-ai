@@ -4,9 +4,9 @@ disable-model-invocation: true
 description: >-
   Set up the user's GLOBAL Claude Code config on the current device with a
   portable baseline: merge a small set of shared preferences (commit/PR
-  attribution off, agent push notifications on, auto-compact at 70% context
-  usage, a context-usage statusline) into ~/.claude/settings.json, install the
-  bundled statusline script to ~/.claude/statusline-command.sh, AND
+  attribution off, agent push notifications on, a context-usage statusline)
+  into ~/.claude/settings.json, install the bundled statusline script to
+  ~/.claude/statusline-command.sh, AND
   insert/refresh a small block of whole-machine behavioral guidance in
   ~/.claude/CLAUDE.md, then offer two opt-ins - skipping the dangerous-mode
   warning prompt, and enabling auto-update for the rain-ai marketplace. It backs
@@ -20,8 +20,7 @@ description: >-
   settings". Do NOT use to configure a specific plugin's settings, to register
   marketplaces (rain-ai is self-contained and already registered if this skill is
   running), to edit a project-level .claude/settings.json or CLAUDE.md, or to set
-  capability-specific env vars like BRRAIN_PATH (a capability's own setup owns
-  those; the only env keys this skill manages are the two auto-compact ones).
+  the BRRAIN_PATH / env vars (a capability's own setup owns those).
 ---
 
 # Claude Code Setup
@@ -57,12 +56,10 @@ on any machine):
 | --- | ----- | --- |
 | `attribution` | `{ "commit": "", "pr": "" }` | No Claude attribution text in commits/PRs. (Modern replacement for `includeCoAuthoredBy`, which is ignored when `attribution` is set - so we do not write the old key.) |
 | `agentPushNotifEnabled` | `true` | Phone push when a long task finishes or input is needed (no-op unless Remote Control is connected - pure upside). |
-| `env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"70"` | Compact early: model quality degrades well before the context window is full, so trigger auto-compact at ~70% usage instead of reactively at the window limit. **Does nothing alone in a local session** - the harness only honors it for *proactive* compaction, which the next key switches on. |
-| `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `"1000000"` | Activates proactive compaction so the 70% override actually fires locally (per code.claude.com/docs/en/env-vars: the override applies only when this is set, in cloud sessions, or on specific models). The value is capped at the current model's real window, so `1000000` is safe everywhere: 70% of 1M on a 1M model, 70% of 200K on a 200K model. The cap only shrinks, never grows - `1000000` encodes "the largest context window that exists today (Jul 2026)", so when a model ships with a window above 1M, raise this value to match it (until then the only cost is compacting earlier than 70% on that model, never later). These two keys travel together - never ship one without the other. Merge per nested key inside `env`, preserving every other entry (e.g. `BRRAIN_PATH`) byte-for-byte. |
-| `statusLine` | `{ "type": "command", "command": "bash ~/.claude/statusline-command.sh" }` | Always-visible context meter: the bundled script shows model, dir, git branch, and a color-coded context-usage percentage (red at >= 70%, matching the compact threshold) so degradation is visible before it bites. |
+| `statusLine` | `{ "type": "command", "command": "bash ~/.claude/statusline-command.sh" }` | Always-visible context meter: the bundled script shows model, dir, git branch, and a color-coded context-usage percentage. Model quality degrades well before the window is full, so the red band (>= 70%) is the user's signal to `/compact` or start a fresh session - a deliberate manual ritual, not an automated one (a prior auto-compact-at-70% baseline was tried and removed; the env override needs `CLAUDE_CODE_AUTO_COMPACT_WINDOW` set to fire locally, and manual compaction at the red band was judged simpler). |
 
-Everything else is **out of scope on purpose** - we do NOT write any other `env`
-entry, `enabledPlugins`, `extraKnownMarketplaces`, `autoUpdatesChannel`, or
+Everything else is **out of scope on purpose** - we do NOT write `env`,
+`enabledPlugins`, `extraKnownMarketplaces`, `autoUpdatesChannel`, or
 `includeCoAuthoredBy`. `rain-ai` is self-contained, so this skill never touches
 the keys that reference other marketplaces.
 
@@ -72,7 +69,8 @@ The script `statusLine` points at. Plain bash with **no external dependencies**
 (no `jq` - Git Bash on a fresh Windows machine does not have it); it parses the
 statusline JSON payload from stdin with bash/sed and prints model, directory
 basename, git branch, and the context-usage percentage color-coded green
-(< 50%), yellow (50-69%), bold red (>= 70%). Install it by copying the asset to
+(< 50%), yellow (50-69%), bold red (>= 70%, the compact-now / fresh-session
+signal). Install it by copying the asset to
 `~/.claude/statusline-command.sh`. Same conservative merge as settings: absent
 -> write it; byte-identical -> no-op; **present but different -> ASK** before
 overwriting (the user may have customized their statusline).
@@ -102,11 +100,6 @@ content.
   set it deliberately; do not silently clobber it.
 - **Every key we do NOT manage** -> **preserve byte-for-byte.** Never drop or
   reorder a user's existing settings.
-- **`env` is merged per NESTED key**, not as a whole object: we set only the
-  two auto-compact keys (`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` and
-  `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, same absent/equal/conflict rules as any
-  managed key) and preserve every other entry inside `env` untouched. Never
-  replace the `env` object wholesale.
 
 **CLAUDE.md (marker-scoped, no ASK needed):** the block is bounded by its
 `rain-ai:baseline` markers, so unlike settings there is no per-key conflict to
@@ -243,9 +236,7 @@ their original is intact.
   personal, machine-specific, or work-specific values - nothing private lives in
   this skill. Per-machine and private values (e.g. `BRRAIN_PATH`, your
   marketplaces, enabled plugins) are owned by the capability that needs them, not
-  here. The two env keys we do manage (the auto-compact pair) are universal
-  preferences, not machine values - the window value self-caps to whatever model
-  the machine runs.
+  here.
 - **Why so small.** This is the system-config counterpart to `warp-setup`'s
   terminal setup. Thin and focused is the point - it manages exactly the handful
   of universal preferences and the one small guidance block, and asks before
