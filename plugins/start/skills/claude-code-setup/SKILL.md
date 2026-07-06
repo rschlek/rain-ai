@@ -21,7 +21,7 @@ description: >-
   marketplaces (rain-ai is self-contained and already registered if this skill is
   running), to edit a project-level .claude/settings.json or CLAUDE.md, or to set
   capability-specific env vars like BRRAIN_PATH (a capability's own setup owns
-  those; the only env key this skill manages is the auto-compact override).
+  those; the only env keys this skill manages are the two auto-compact ones).
 ---
 
 # Claude Code Setup
@@ -57,7 +57,8 @@ on any machine):
 | --- | ----- | --- |
 | `attribution` | `{ "commit": "", "pr": "" }` | No Claude attribution text in commits/PRs. (Modern replacement for `includeCoAuthoredBy`, which is ignored when `attribution` is set - so we do not write the old key.) |
 | `agentPushNotifEnabled` | `true` | Phone push when a long task finishes or input is needed (no-op unless Remote Control is connected - pure upside). |
-| `env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"70"` | Compact early: model quality degrades well before the context window is full, so trigger auto-compact at ~70% usage instead of the harness default (~95%). This is the ONE key we manage *inside* `env` - merge per-key and preserve every other env entry (e.g. `BRRAIN_PATH`) byte-for-byte. |
+| `env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"70"` | Compact early: model quality degrades well before the context window is full, so trigger auto-compact at ~70% usage instead of reactively at the window limit. **Does nothing alone in a local session** - the harness only honors it for *proactive* compaction, which the next key switches on. |
+| `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `"1000000"` | Activates proactive compaction so the 70% override actually fires locally (per code.claude.com/docs/en/env-vars: the override applies only when this is set, in cloud sessions, or on specific models). The value is capped at the current model's real window, so `1000000` is safe everywhere: 70% of 1M on a 1M model, 70% of 200K on a 200K model. These two keys travel together - never ship one without the other. Merge per nested key inside `env`, preserving every other entry (e.g. `BRRAIN_PATH`) byte-for-byte. |
 | `statusLine` | `{ "type": "command", "command": "bash ~/.claude/statusline-command.sh" }` | Always-visible context meter: the bundled script shows model, dir, git branch, and a color-coded context-usage percentage (red at >= 70%, matching the compact threshold) so degradation is visible before it bites. |
 
 Everything else is **out of scope on purpose** - we do NOT write any other `env`
@@ -101,8 +102,9 @@ content.
   set it deliberately; do not silently clobber it.
 - **Every key we do NOT manage** -> **preserve byte-for-byte.** Never drop or
   reorder a user's existing settings.
-- **`env` is merged per NESTED key**, not as a whole object: we set only
-  `env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (same absent/equal/conflict rules as any
+- **`env` is merged per NESTED key**, not as a whole object: we set only the
+  two auto-compact keys (`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` and
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, same absent/equal/conflict rules as any
   managed key) and preserve every other entry inside `env` untouched. Never
   replace the `env` object wholesale.
 
@@ -241,8 +243,9 @@ their original is intact.
   personal, machine-specific, or work-specific values - nothing private lives in
   this skill. Per-machine and private values (e.g. `BRRAIN_PATH`, your
   marketplaces, enabled plugins) are owned by the capability that needs them, not
-  here. The one env key we do manage (`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`) is a
-  universal preference, not a machine value.
+  here. The two env keys we do manage (the auto-compact pair) are universal
+  preferences, not machine values - the window value self-caps to whatever model
+  the machine runs.
 - **Why so small.** This is the system-config counterpart to `warp-setup`'s
   terminal setup. Thin and focused is the point - it manages exactly the handful
   of universal preferences and the one small guidance block, and asks before
