@@ -4,7 +4,9 @@ disable-model-invocation: true
 description: >-
   Set up the user's GLOBAL Claude Code config on the current device with a
   portable baseline: merge a small set of shared preferences (commit/PR
-  attribution off, agent push notifications on) into ~/.claude/settings.json AND
+  attribution off, agent push notifications on, auto-compact at 70% context
+  usage, a context-usage statusline) into ~/.claude/settings.json, install the
+  bundled statusline script to ~/.claude/statusline-command.sh, AND
   insert/refresh a small block of whole-machine behavioral guidance in
   ~/.claude/CLAUDE.md, then offer two opt-ins - skipping the dangerous-mode
   warning prompt, and enabling auto-update for the rain-ai marketplace. It backs
@@ -18,7 +20,8 @@ description: >-
   settings". Do NOT use to configure a specific plugin's settings, to register
   marketplaces (rain-ai is self-contained and already registered if this skill is
   running), to edit a project-level .claude/settings.json or CLAUDE.md, or to set
-  the BRRAIN_PATH / env vars (a capability's own setup owns those).
+  capability-specific env vars like BRRAIN_PATH (a capability's own setup owns
+  those; the only env key this skill manages is the auto-compact override).
 ---
 
 # Claude Code Setup
@@ -38,6 +41,7 @@ each on-disk file toward its asset, then **verify the artifact**.
 claude-code-setup/assets/
   settings.baseline.json     # the settings.json keys this skill manages, at their values
   claudemd.baseline.md        # the CLAUDE.md guidance block this skill manages (marker-wrapped)
+  statusline-command.sh       # the statusline script settings.baseline.json points at
 ```
 
 Reference them under
@@ -53,11 +57,24 @@ on any machine):
 | --- | ----- | --- |
 | `attribution` | `{ "commit": "", "pr": "" }` | No Claude attribution text in commits/PRs. (Modern replacement for `includeCoAuthoredBy`, which is ignored when `attribution` is set - so we do not write the old key.) |
 | `agentPushNotifEnabled` | `true` | Phone push when a long task finishes or input is needed (no-op unless Remote Control is connected - pure upside). |
+| `env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"70"` | Compact early: model quality degrades well before the context window is full, so trigger auto-compact at ~70% usage instead of the harness default (~95%). This is the ONE key we manage *inside* `env` - merge per-key and preserve every other env entry (e.g. `BRRAIN_PATH`) byte-for-byte. |
+| `statusLine` | `{ "type": "command", "command": "bash ~/.claude/statusline-command.sh" }` | Always-visible context meter: the bundled script shows model, dir, git branch, and a color-coded context-usage percentage (red at >= 70%, matching the compact threshold) so degradation is visible before it bites. |
 
-Everything else is **out of scope on purpose** - we do NOT write `env`,
-`enabledPlugins`, `extraKnownMarketplaces`, `autoUpdatesChannel`, or
+Everything else is **out of scope on purpose** - we do NOT write any other `env`
+entry, `enabledPlugins`, `extraKnownMarketplaces`, `autoUpdatesChannel`, or
 `includeCoAuthoredBy`. `rain-ai` is self-contained, so this skill never touches
 the keys that reference other marketplaces.
+
+### statusline-command.sh
+
+The script `statusLine` points at. Plain bash with **no external dependencies**
+(no `jq` - Git Bash on a fresh Windows machine does not have it); it parses the
+statusline JSON payload from stdin with bash/sed and prints model, directory
+basename, git branch, and the context-usage percentage color-coded green
+(< 50%), yellow (50-69%), bold red (>= 70%). Install it by copying the asset to
+`~/.claude/statusline-command.sh`. Same conservative merge as settings: absent
+-> write it; byte-identical -> no-op; **present but different -> ASK** before
+overwriting (the user may have customized their statusline).
 
 ### claudemd.baseline.md
 
@@ -84,6 +101,10 @@ content.
   set it deliberately; do not silently clobber it.
 - **Every key we do NOT manage** -> **preserve byte-for-byte.** Never drop or
   reorder a user's existing settings.
+- **`env` is merged per NESTED key**, not as a whole object: we set only
+  `env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (same absent/equal/conflict rules as any
+  managed key) and preserve every other entry inside `env` untouched. Never
+  replace the `env` object wholesale.
 
 **CLAUDE.md (marker-scoped, no ASK needed):** the block is bounded by its
 `rain-ai:baseline` markers, so unlike settings there is no per-key conflict to
@@ -134,6 +155,24 @@ resolve - we own exactly what is between the markers and nothing else.
      escalate (next section). Do not leave a half-written file.
 9. **On a clean verify, delete `settings.json.bak`.** It has done its job.
 
+### Then: the statusline script
+
+Install `assets/statusline-command.sh` to `~/.claude/statusline-command.sh` (the
+path the managed `statusLine` key points at) by the conservative rules above:
+read both files, **no-op if byte-identical**, write it if absent, and **ASK
+before overwriting** an on-disk script that differs (show a short diff summary).
+Then **verify the artifact**: pipe a sample payload through it and assert it
+prints a statusline, e.g.
+
+```
+echo '{"model":{"display_name":"Test"},"workspace":{"current_dir":"~"},"context_window":{"used_percentage":72}}' \
+  | bash ~/.claude/statusline-command.sh
+```
+
+must print the model name and a red `Ctx 72%`. If the script was installed but
+the check fails, say so plainly - a silent statusline is the failure mode this
+guard exists for.
+
 ### Then: the CLAUDE.md guidance block
 
 Apply `assets/claudemd.baseline.md` to `~/.claude/CLAUDE.md` by the marker-scoped
@@ -166,10 +205,11 @@ loop, just on prose instead of JSON:
 11. **Report** what landed: the baseline keys written (or confirmed already
     present), each conflict and how it was resolved, whether the dangerous-mode
     flag was added, that `settings.json` re-read as valid JSON and pre-existing
-    settings were preserved, whether the `CLAUDE.md` guidance block was created /
-    appended / refreshed / already current and that the user's own guidance was
-    preserved, that the backups were removed, and whether they enabled
-    auto-update.
+    settings were preserved, whether the statusline script was installed /
+    already current and passed its live smoke test, whether the `CLAUDE.md`
+    guidance block was created / appended / refreshed / already current and that
+    the user's own guidance was preserved, that the backups were removed, and
+    whether they enabled auto-update.
 
 ## Contextual human escalation
 
@@ -197,11 +237,12 @@ their original is intact.
   `CLAUDE.md` holds whole-machine *behavioral guidance* that cannot. Both are
   user-level and global; the skill never touches `settings.local.json`, project
   `CLAUDE.md` files, or `.claude.json` (harness state).
-- **Privacy / portability.** Both shipped baselines are universal and carry no
+- **Privacy / portability.** All shipped assets are universal and carry no
   personal, machine-specific, or work-specific values - nothing private lives in
   this skill. Per-machine and private values (e.g. `BRRAIN_PATH`, your
   marketplaces, enabled plugins) are owned by the capability that needs them, not
-  here.
+  here. The one env key we do manage (`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`) is a
+  universal preference, not a machine value.
 - **Why so small.** This is the system-config counterpart to `warp-setup`'s
   terminal setup. Thin and focused is the point - it manages exactly the handful
   of universal preferences and the one small guidance block, and asks before
