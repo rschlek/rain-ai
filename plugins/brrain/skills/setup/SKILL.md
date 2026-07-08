@@ -177,17 +177,58 @@ Read the registry, then report concisely:
 
 ## Closing handoff
 
-After creating (or first-activating) a brain, close with a short, non-teaching handoff - name the
-first step, then frame the whole engine and offer help on demand. Do **not** force a first capture,
-seed an elicitation, or lecture on the mechanics. Something like:
+After creating (or first-activating) a brain, close with a short **orientation**: name the first
+step, sketch how the engine works, list the tools, and cover Obsidian for viewing. Keep it a tour,
+not a lecture - do **not** force a first capture, seed an elicitation, or walk through the rulebook.
+Deliver it in the user's own OS terms (use the actual brain path, the right Obsidian download for
+their platform). Something like:
 
-> Brain created and active. Use **`remember`** to capture your first memory whenever something
-> worth keeping comes up.
+> **Your brain is created and active** at `<brain path>`. Use **`remember`** to capture your first
+> memory whenever something worth keeping comes up - that is the only habit you need to start.
 >
-> The brain does more than store notes: **`recall`** answers questions from what you have captured,
-> **`refine`** distills your captures into clean, cross-linked pages (with your approval), and
-> **`interview`** and **`audit`** keep it growing and consistent. The full manual is in the brain's
-> `README.md`. Ask me to explain any part of how it works, anytime.
+> **What it is.** A durable, git-backed, plain-markdown knowledge base you talk to through skills.
+> An agent does the reading and writing, so knowledge compounds instead of being re-explained every
+> conversation.
+>
+> **How it works.** Capture is cheap and parks into untrusted staging; a later **`refine`** pass
+> distills those into clean, cross-linked pages that you approve. The one rule that makes it
+> trustworthy: **nothing becomes canonical knowledge without your yes.**
+>
+> ```
+> you ── remember ──> raw/ + inbox.md      capture: cheap, immutable, staged
+>                          │
+>                       refine              the trust gate - you review and approve
+>                          v
+>                 wiki pages + index.md     canonical, deduplicated knowledge
+>                          │
+> you <── recall ──────────┘               reads the pages back to answer questions
+> ```
+>
+> **The skills.**
+> - **`remember`** - capture a note (fact, chat summary, a mine of past work, or a document). Never
+>   edits canonical pages; low-stakes by design.
+> - **`recall`** - ask the brain a question. Reads the canonical pages, peeks at the un-refined tail,
+>   gives a cited answer. Read-only.
+> - **`refine`** - the synthesis pass. Distills pending captures into pages + `index.md`, then stops
+>   for your approval. Run it when captures pile up.
+> - **`interview`** - the brain hunting its own gaps: finds subjects referenced but never defined and
+>   interviews you to fill them.
+> - **`audit`** - the consistency check: sweeps the pages for contradictions, stale claims, and index
+>   drift, and flags what needs your call.
+>
+> **Viewing it in Obsidian (optional).** [Obsidian](https://obsidian.md) is a free local app for
+> browsing markdown - your brain is already a valid Obsidian vault (a `.obsidian` view config ships
+> inside it). To use it: download Obsidian from **https://obsidian.md/download**, install it, then
+> choose **"Open folder as vault"** and select `<brain path>`. Treat Obsidian as a **read-only
+> viewer** - editing is the skills' job, so the agent stays the single writer and the git history
+> stays clean.
+>
+> The full manual is in the brain's `README.md`. Ask me to explain any part of how it works, anytime.
+
+Trim to fit the moment - if the user is clearly experienced with the brain (e.g. this is a second
+device via clone, not their first brain), lead with the path and the Obsidian note and keep the rest
+brief. The full detail lives in the brain's `README.md`; this handoff points there rather than
+reproducing it.
 
 ## Notes
 
