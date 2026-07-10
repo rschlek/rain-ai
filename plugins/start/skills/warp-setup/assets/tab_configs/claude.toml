@@ -1,8 +1,0 @@
-# Warp Tab Config - managed by the warp-setup skill.
-# Docs: https://docs.warp.dev/terminal/windows/tab-configs
-name = "claude"
-
-[[panes]]
-id = "main"
-type = "terminal"
-commands = ["claude --chrome --dangerously-skip-permissions"]

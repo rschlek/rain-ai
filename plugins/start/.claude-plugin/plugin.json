@@ -1,7 +1,0 @@
-{
-  "name": "start",
-  "description": "The front door. System-level device setup that is orthogonal to any single capability: global/device bootstrapping such as the terminal and shared Claude settings. Capability-specific setup (e.g. cloning a knowledge base) stays in that capability's own plugin.",
-  "author": {
-    "name": "Rainier"
-  }
-}
