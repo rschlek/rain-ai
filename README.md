@@ -70,7 +70,7 @@ What the bootstrap does:
 | Plugin         | What it's for |
 | -------------- | ------------- |
 | `start`        | System-level device setup: configuring the terminal (`warp-setup`), the global Claude Code settings baseline (`claude-code-setup`), and the Codex CLI device settings (`codex-cli-setup`) that every other plugin builds on. |
-| `productivity` | Portable, general-purpose productivity skills: `breakout` (open a fresh chat in a new tab), `handoff` (compact the conversation for a new agent), and `grill-me` (stress-test a plan by interview). |
+| `productivity` | Portable, general-purpose productivity skills: `breakout` (open a fresh chat in a new tab), `new-warp-chat` (the shared seeded-Warp-tab launcher breakout builds on), `handoff` (compact the conversation for a new agent), and `grill-me` (stress-test a plan by interview). |
 | `brrain`       | A local-first second-brain loop: device `setup`, provenance-tagged `remember`, trust-gated `refine` into canonical wiki pages, plus `recall`, `interview`, and `audit`. |
 
 A capability plugin brings its own setup (e.g. `brrain:setup`); on Codex,

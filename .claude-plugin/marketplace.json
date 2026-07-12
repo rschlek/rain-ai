@@ -6,7 +6,7 @@
     {
       "name": "productivity",
       "source": "./plugins/productivity",
-      "description": "Portable, general-purpose productivity skills: breakout (open a fresh chat in a new tab), handoff (compact the conversation for a new agent), and grill-me (stress-test a plan by interview).",
+      "description": "Portable, general-purpose productivity skills: breakout (open a fresh chat in a new tab), new-warp-chat (the shared seeded-Warp-tab launcher breakout builds on), handoff (compact the conversation for a new agent), and grill-me (stress-test a plan by interview).",
       "category": "productivity"
     },
     {
