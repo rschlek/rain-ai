@@ -1,0 +1,19 @@
+{
+  "name": "cli-environment",
+  "description": "Configures the terminal and CLI environment you use to talk to Claude Code and Codex on a device: the Warp terminal, a portable global Claude Code settings baseline, and the Codex CLI hooks feature. This is environment/tooling setup, NOT a general onboarding or 'get me set up' entry point — it does not install or onboard any capability. Each capability (the brain, todoist, and the rest) ships its own setup skill.",
+  "author": {
+    "name": "Rainier"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "CLI Environment",
+    "shortDescription": "Sets up the terminal + CLI environment (Warp, Claude Code, Codex) on a device.",
+    "longDescription": "cli-environment configures the tools you use to talk to Claude Code and Codex on a machine. warp-setup configures the Warp terminal, claude-code-setup applies a portable global Claude Code settings baseline, and codex-cli-setup enables the Codex CLI hooks feature. This is environment/tooling setup — it is NOT a general 'get me set up' or onboarding entry point, and it does not install or onboard any capability. Each capability (the brain, todoist, and the rest) ships its own setup skill; use those to get started with a capability.",
+    "developerName": "Rainier",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ]
+  }
+}

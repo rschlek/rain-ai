@@ -1,0 +1,11 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "agentPushNotifEnabled": true,
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  }
+}
