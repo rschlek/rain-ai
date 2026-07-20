@@ -12,17 +12,16 @@ config, the *portable* skill lives here and the private values live elsewhere.
 
 ## What goes here vs. elsewhere (the seam)
 
-`start` owns **system-level** setup - whatever is true for the *whole machine
-regardless of which plugins you use*: terminal, harness, global Claude settings.
-**Capability-specific** setup lives in that capability's *own* plugin, in its
-own marketplace.
+**System-level** device setup - whatever is true for the *whole machine regardless
+of which plugins you use* (terminal, harness, global Claude settings, and this
+household's device enrollment) - lives in the **private** dev marketplace's
+`cli-environment` plugin, because it carries machine- and network-specific values
+that must not be public. **Capability-specific** setup lives in that capability's
+*own* plugin. This public marketplace hosts portable capability plugins only.
 
 Litmus test for a setup step: **"Would this still be needed if the user only
-ever used one *other* plugin?"** Yes -> system-level -> it belongs in `start`.
-No -> it belongs to the capability, not here.
-
-Guard against `start` becoming a junk drawer: it is device bootstrapping, not a
-home for general utilities.
+ever used one *other* plugin?"** Yes -> system-level -> it belongs in
+`cli-environment` (private). No -> it belongs to the capability.
 
 ## How publishing actually works (read this once)
 
@@ -42,9 +41,9 @@ bump.** Just commit and push.
 - `plugins/<plugin>/skills/` - LIVE skills (auto-discovered, one level deep).
   Each plugin is self-contained: its own `.claude-plugin/plugin.json`,
   `skills/`, and any `references/`.
-  - `plugins/start/` - system-level device setup (default plugin): `warp-setup`
-    (terminal), `claude-code-setup` (global Claude Code settings baseline), and
-    `codex-cli-setup` (Codex CLI device settings: the `hooks` feature flag).
+  - `plugins/productivity/` - portable, general-purpose productivity skills.
+  - `plugins/brrain/` - the local-first second-brain knowledge loop, with its own
+    device `setup`.
 - `wip/` - gitignored scratchpad for unfinished skills. Never shipped, never
   committed. Move a folder out to `plugins/<plugin>/skills/` when it is ready.
 - `scripts/validate.py` - pre-commit sanity check (valid JSON + frontmatter).
@@ -52,7 +51,7 @@ bump.** Just commit and push.
 Skills are discovered **one level deep** under a plugin's `skills/`; you cannot
 nest skill folders. To group related skills with their own references as a
 liftable unit, give them their own plugin. A skill's invocation name is
-`<plugin>:<skill-dir>` - e.g. `start:warp-setup`.
+`<plugin>:<skill-dir>` - e.g. `brrain:remember`.
 
 ## Add (publish) a skill
 Skills are authored and proven in a private dev marketplace; this repo is the

@@ -1,7 +1,0 @@
-{
-  "name": "cli-environment",
-  "description": "Configures the terminal and CLI environment you use to talk to Claude Code and Codex on a device: the Warp terminal, a portable global Claude Code settings baseline, and the Codex CLI hooks feature. This is environment/tooling setup, NOT a general onboarding or 'get me set up' entry point — it does not install or onboard any capability. Each capability (the brain, todoist, and the rest) ships its own setup skill.",
-  "author": {
-    "name": "Rainier"
-  }
-}

@@ -14,12 +14,6 @@
       "source": "./plugins/brrain",
       "description": "Second-brain knowledge loop over a local-first brrain knowledge base: device setup, provenance-tagged capture, trust-gated synthesis into canonical wiki pages, read-back, and consistency audit.",
       "category": "productivity"
-    },
-    {
-      "name": "cli-environment",
-      "source": "./plugins/cli-environment",
-      "description": "Configures the terminal and CLI environment for talking to Claude Code and Codex on a device: the Warp terminal, a portable global Claude Code settings baseline, and the Codex CLI hooks feature. Environment/tooling setup, NOT a general onboarding or 'get me set up' entry point — each capability ships its own setup skill.",
-      "category": "productivity"
     }
   ]
 }
