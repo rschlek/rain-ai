@@ -16,7 +16,8 @@ and appends one **pointer** to `inbox.md`. It does no extraction, linking, dedup
 rewriting - those are the expensive, careful work, and they all belong to **`refine`**, the
 later ritual that distills pending pointers into canonical wiki pages under the user's review.
 So nothing capture writes is canonical; the inbox is untrusted staging, and `refine` is the
-only trust gate.
+trust gate. (`absorb` is the one deliberate, user-opted exception - an ungated capture straight
+to the canonical pages; see "The absorb operation".)
 
 ## The three tiers
 
@@ -556,6 +557,33 @@ why for good. An entry therefore **must** record, for every change it lands - th
 each supersession / reversal and why** (the contrast the page dropped), each **rejected option** fenced
 or removed - alongside the usual entries-synthesized / pages-touched / watermark move / gate curation.
 This is the handoff that makes off-page history safe (Supersession, above).
+
+## The absorb operation (ungated capture-to-corpus)
+
+`absorb` is the deliberate exception to the trust gate, for users or moments that do not want the
+`refine` ritual: it parks the same immutable raw doc + inbox pointer as `remember` (same source
+kinds, brain-worthy filter, deny-list, provenance tags, supersession discipline), then
+**immediately** distills that one capture into the canonical wiki pages following `refine`'s
+conventions (routing / "earn it", page layering, graded supersession, bounded touch-set,
+`index.md` router lines) and commits - with **no review**. Invoking it is the user's approval:
+that explicit opt-out replaces the gate for this capture only.
+
+- **Per-capture, never a tail drain.** absorb consumes exactly the capture it just parked. Pending
+  `remember` pointers below the watermark are never read, reordered, or consumed - only `refine`
+  drains the tail. Mixed use of `remember` and `absorb` is therefore safe by construction.
+- **Watermark placement.** The absorbed pointer is inserted **above** the
+  `<!-- synthesized through: ... -->` watermark in the same commit - positionally recorded as
+  already-synthesized, which after the commit is true - and every line below the watermark stays
+  byte-identical. On a cold brain with no watermark yet, absorb creates one directly below its
+  pointer, above any pending entries.
+- **Provenance is kept; scrutiny is skipped.** `Me`/`Agent` tags, dated pointers, and immutable
+  raw docs land exactly as on the gated path, so the audit trail is identical - but an
+  `Agent`-authored claim gets no gate confirmation. That loss is the accepted trade; `audit`
+  remains the backstop, and a consequential uncorroborated `Agent` claim is called out in the
+  confirmation line (informed, never blocked).
+- **`log.md`.** One `## [YYYY-MM-DD] absorb` entry per committed run, carrying the same duties as
+  a refine entry: the before -> after and why of every supersession folded, pages created or
+  updated, and the raw doc parked.
 
 ## The recall operation
 
