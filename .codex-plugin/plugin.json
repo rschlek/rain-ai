@@ -1,6 +1,6 @@
 {
   "name": "brrain",
-  "description": "The user's second brain (brrain): the full park-and-link knowledge loop. setup creates or connects a brain per device; remember captures provenance-tagged notes; refine synthesizes the inbox into canonical wiki pages at the trust gate; absorb captures straight into the canonical pages with no gate; recall reads them back; interview hunts knowledge gaps and elicits answers to fill them; audit lints the canonical pages for inconsistency.",
+  "description": "The user's second brain (brrain): the full park-and-link knowledge loop. setup creates or connects a brain per device; remember captures provenance-tagged notes; refine synthesizes the inbox into canonical wiki pages at the trust gate; remember-gateless captures straight into the canonical pages with no gate; recall reads them back; interview hunts knowledge gaps and elicits answers to fill them; audit lints the canonical pages for inconsistency.",
   "author": {
     "name": "Rainier"
   },
@@ -8,7 +8,7 @@
   "interface": {
     "displayName": "brrain",
     "shortDescription": "Your durable, git-backed second brain: capture, synthesize, recall.",
-    "longDescription": "brrain is a portable second-brain engine over a local-first, plain-markdown knowledge base. Capture notes (remember), synthesize them into canonical cross-linked wiki pages behind a trust gate (refine) or straight to the corpus with no gate (absorb), read them back (recall), and keep the corpus growing and consistent (interview, audit). setup creates or connects a brain per device.",
+    "longDescription": "brrain is a portable second-brain engine over a local-first, plain-markdown knowledge base. Capture notes (remember), synthesize them into canonical cross-linked wiki pages behind a trust gate (refine) or straight to the corpus with no gate (remember-gateless), read them back (recall), and keep the corpus growing and consistent (interview, audit). setup creates or connects a brain per device.",
     "developerName": "Rainier",
     "category": "Productivity",
     "capabilities": [
