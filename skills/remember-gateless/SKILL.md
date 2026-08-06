@@ -68,10 +68,18 @@ drafts would collide on shared pages. If a draft is pending, land or discard it 
       meanwhile) and insert the pointer block immediately **above** it, leaving every line below
       the watermark byte-identical - the pending tail must not change. Positionally, above the
       watermark means already-synthesized, which after this commit is true; the next `refine` will
-      not re-consume it and `recall` will not misread it as staging. If no watermark exists yet (a
-      cold brain before its first refine), insert the pointer and then a new
+      not re-consume it and `recall` will not misread it as staging. Template-created brains ship
+      with a watermark from day one (seeded as `(nothing yet)`), so insert-above is the normal
+      case even on a brand-new brain. Only if no watermark line exists at all (a hand-made brain
+      that predates the template), insert the pointer and then a new
       `<!-- synthesized through: YYYY-MM-DD -->` line directly below it, both placed **above** any
       existing pending pointer headings (top of the pending list), so those stay below and pending.
+      Either way there must be **exactly one** watermark line afterwards - never create a second.
+      **Never rewrite the watermark's comment text** - the date it names is `refine`'s
+      tail-consumption frontier, which this skill does not move; position, not the text, is the
+      truth. (Writing this capture's newer date there would falsely imply the older pending
+      entries below were synthesized.) Dates above the watermark may read non-monotonic once
+      gateless entries mix with refine passes - expected and harmless; nothing orders on them.
    4. One path-scoped `git add` of everything this run touched (raw doc, `inbox.md`, pages,
       `index.md`, `log.md`), **one** commit with a readable summary, `git push` if the brain has an
       upstream remote.

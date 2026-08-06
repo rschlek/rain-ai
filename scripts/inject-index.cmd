@@ -10,10 +10,11 @@ rem `cmd` (a no-space token that resolves cleanly) on THIS launcher, and let cmd
 rem - where quoting is well behaved - locate Git Bash and run the real hook.
 rem
 rem This launcher is wired to command_windows, which only Codex reads (Claude
-rem Code and macOS/Linux read the plain `command`: bash hook.sh). So it hands off
-rem to hook.sh, which detects the host (PLUGIN_ROOT => Codex) and dispatches to
-rem inject-agents-md.sh - the silent ~/.codex/AGENTS.md writer. That path prints
-rem NOTHING, so on any failure here we also stay silent (never break startup).
+rem Code and macOS/Linux read the plain `command`: bash hook.sh). It hands off
+rem to hook.sh, which on Codex first runs the one-time legacy AGENTS.md block
+rem cleanup and then emits the additionalContext JSON on stdout (Codex 0.145+
+rem injects it silently). Stdout must pass through untouched; on failure to
+rem find bash we exit 0 silently (never break startup).
 setlocal
 set "BASH=%ProgramFiles%\Git\bin\bash.exe"
 if not exist "%BASH%" (

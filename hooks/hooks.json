@@ -7,7 +7,8 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh\"",
-            "command_windows": "cmd /c \"${CLAUDE_PLUGIN_ROOT}\\scripts\\inject-index.cmd\""
+            "command_windows": "cmd /c \"${CLAUDE_PLUGIN_ROOT}\\scripts\\inject-index.cmd\"",
+            "additionalContextLimit": 0
           }
         ]
       }
