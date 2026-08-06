@@ -112,9 +112,9 @@ pointer, even a one-line dictated fact.
       has an upstream remote (a local-only brain just keeps the commit local).
    6. **Release the lock** (`bash <brain-lock.sh> release <brain-path> "<nonce>"`).
    7. **Optionally count pending pointers** below the `<!-- synthesized through: ... -->` watermark
-      (a cold brain before the first refine has no watermark - the whole file is pending) for the
-      informational report, then return a **`LANDED`** result:
-      `logged -> <tag or "inbox"> (<N> pending)`.
+      (template brains ship one from day one, seeded `(nothing yet)`; on a hand-made brain with no
+      watermark line the whole file is pending) for the informational report, then return a
+      **`LANDED`** result: `logged -> <tag or "inbox"> (<N> pending)`.
 
 7. **Report.** Surface the one-line `LANDED` confirmation. The `(N pending)` count is
    **informational only** - a capture is **never blocked**. Do not prod per-capture; keeping the

@@ -581,8 +581,15 @@ for this capture only.
   `<!-- synthesized through: ... -->` watermark in the same commit - positionally recorded as
   already-synthesized, which after the commit is true - and every line below the watermark stays
   byte-identical. The watermark is located in the **live** file at land time, under the lock,
-  never from an earlier snapshot. On a cold brain with no watermark yet, the operation creates one
-  directly below its pointer, above any pending entries.
+  never from an earlier snapshot. (Template brains ship with a watermark from day one, so
+  insert-above is the normal case; only a hand-made brain with no watermark line at all gets one
+  created, directly below the inserted pointer and above any pending entries - and there must be
+  exactly one watermark line afterwards.) The watermark's **comment text is never
+  rewritten** by this operation - that date names `refine`'s tail-consumption frontier, which
+  gateless does not move; position is the truth and the text is a readability hint. A consequence:
+  dates above the watermark may read non-monotonic once gateless entries mix with refine passes -
+  expected and harmless (supersession orders on the pointers' own date stamps, never on file
+  order), so no operation should "fix" the ordering.
 - **Provenance is kept; scrutiny is skipped.** `Me`/`Agent` tags, dated pointers, and immutable
   raw docs land exactly as on the gated path, so the audit trail is identical - but an
   `Agent`-authored claim gets no gate confirmation. That loss is the accepted trade; `audit`

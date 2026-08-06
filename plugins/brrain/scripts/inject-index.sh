@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# SessionStart hook for the brrain plugin - the CLAUDE CODE path.
+# SessionStart hook for the brrain plugin - the shared injection emitter.
 #
-# Dispatch: hook.sh routes here on Claude Code (and to inject-agents-md.sh on
-# Codex). The two hosts differ in HOW context is injected, not WHAT: the text is
-# built once by the shared brain-context.sh, and this script wraps it for Claude.
-#
-# Claude Code injects SessionStart context ONLY via JSON with
-# hookSpecificOutput.additionalContext (plain stdout is ignored), and renders it
-# silently into the model context - so this script emits that JSON. Codex,
-# by contrast, renders additionalContext into the VISIBLE transcript
-# unconditionally (upstream bug openai/codex#16933), so it cannot use this path;
-# inject-agents-md.sh maintains the same text silently in ~/.codex/AGENTS.md.
+# Dispatch: hook.sh runs this on BOTH hosts (on Codex, after the one-time
+# legacy AGENTS.md cleanup in inject-agents-md.sh). The context text is built
+# once by the shared brain-context.sh, and this script wraps it as
+# hookSpecificOutput.additionalContext JSON, which both hosts load into the
+# model context silently. (Codex gained silent additionalContext injection in
+# 0.145 - verified 2026-08-05; hooks are enabled by default there and
+# SessionStart fires on startup, resume, clear, and compact. The hook entry
+# sets additionalContextLimit: 0 so a grown index is never spilled to a
+# preview file.)
 #
 # A SessionStart hook must never break or slow startup, so the only no-op is "no
 # brain on this device" (brain-context.sh exits non-zero); every other path

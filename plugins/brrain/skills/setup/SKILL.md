@@ -124,7 +124,8 @@ An agent-driven procedure - no bundled script, so it stays portable.
      whether to **switch** to the new brain or **keep** the current one. On switch: update
      `registry.active`. On keep: leave it unchanged (the new brain is registered but inactive).
 
-7. **Light handoff.** Close with the message in **Closing handoff** below.
+7. **Light handoff.** Close with the message in **Closing handoff** below. On Codex, include the
+   one-time hook-trust step (see the "Index-injection hook" note).
 
 ---
 
@@ -238,11 +239,15 @@ reproducing it.
   config). It never creates or edits brain **knowledge** - pages, `index.md`, `inbox.md` content,
   and `raw/` docs are the other skills' job.
 - **Index-injection hook.** A session-start hook ships with this plugin (`hooks/hooks.json` +
-  `scripts/inject-index.sh`). It reads the active brain from `~/.brrain/registry.json`: until setup
-  has run it is a silent no-op, and on a brand-new empty brain it primes only the capture nudge
-  (there is no `index.md` to inject until the first refine). On the **default host**, enabling
-  `brrain` installs the hook automatically. **On Codex, plugin hooks are off until the device-wide
-  `hooks` feature is enabled in `~/.codex/config.toml` and each hook is trusted once via `/hooks`** -
-  a one-time Codex device setup, separate from brrain and outside this skill's job. Once that is
-  done, trust the brrain `SessionStart` hook at the `/hooks` prompt; the same `hooks/hooks.json`
-  works on both hosts unchanged.
+  `scripts/hook.sh`). It reads the active brain from `~/.brrain/registry.json`: until setup has
+  run it is a silent no-op, and on a brand-new empty brain it primes only the capture nudge
+  (there is no `index.md` to inject until the first refine). **Both hosts inject the same way** -
+  the hook emits `additionalContext`, loaded into the model context silently each session
+  (verified on Codex 0.145+, where hooks are enabled by default and SessionStart fires on
+  startup, resume, clear, and compact). On the default host, enabling `brrain` installs the hook
+  automatically. **On Codex the only per-device step is the one-time trust review**: have the
+  user run `/hooks` and trust the brrain `SessionStart` hook (an untrusted hook is silently
+  skipped, and the hook must be re-trusted if `hooks/hooks.json` ever changes). If a device's
+  `config.toml` carries a legacy `[features] hooks = false`, it must be removed. Devices upgraded
+  from older brrain versions may carry a legacy brrain block in `~/.codex/AGENTS.md`; the hook's
+  Codex branch removes it automatically on its first trusted run.
