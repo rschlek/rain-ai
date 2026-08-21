@@ -1,14 +1,8 @@
 {
   "name": "rain-ai",
   "owner": { "name": "Rainier", "email": "rschlek@users.noreply.github.com" },
-  "description": "A shareable Claude marketplace for getting set up: onboarding, system orientation, and device bootstrapping. The front door to a Claude-as-an-OS workflow.",
+  "description": "Public marketplace for brrain, a local-first second brain for Claude Code and Codex. brrain's home is github.com/rschlek/brrain; this repo is the install door and mirrors it.",
   "plugins": [
-    {
-      "name": "productivity",
-      "source": "./plugins/productivity",
-      "description": "Portable, general-purpose productivity skills: breakout (open a fresh chat in a new tab), new-warp-chat (the shared seeded-Warp-tab launcher breakout builds on), handoff (compact the conversation for a new agent), and grill-me (stress-test a plan by interview).",
-      "category": "productivity"
-    },
     {
       "name": "brrain",
       "source": "./plugins/brrain",

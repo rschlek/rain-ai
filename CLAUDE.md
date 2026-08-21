@@ -1,86 +1,58 @@
 # CLAUDE.md
 
-Guidance for any Claude session working in this repo. **rain-ai** is a
-**public, shareable** Claude plugin marketplace whose job is getting people and
-machines *set up*: device bootstrapping and the global settings every other
-plugin builds on. It is the front door to a Claude-as-an-OS workflow.
+Guidance for any Claude session working in this repo. **rain-ai** is the
+**public** install door for the `brrain` plugin — a marketplace with exactly one
+entry. People (including colleagues at work) installed brrain from
+`rschlek/rain-ai`, so this repo's name, its marketplace name, and the
+`brrain@rain-ai` plugin scope must never change. Nothing else lives here.
 
-This repo is deliberately separate from any private/work marketplace. Keep it
-that way: **nothing private, personal-identifying, or work-specific (e.g. an
-employer's internal details) belongs here.** If a setup step needs private
-config, the *portable* skill lives here and the private values live elsewhere.
+**Public repo.** Nothing private, personal-identifying, or work-specific belongs
+here. Rainier's personal plugins and agents live in his private marketplace.
 
-## What goes here vs. elsewhere (the seam)
+## Where brrain actually lives
 
-**System-level** device setup - whatever is true for the *whole machine regardless
-of which plugins you use* (terminal, harness, global Claude settings, and this
-household's device enrollment) - lives in the **private** dev marketplace's
-`cli-environment` plugin, because it carries machine- and network-specific values
-that must not be public. **Capability-specific** setup lives in that capability's
-*own* plugin. This public marketplace hosts portable capability plugins only.
+The source of truth is the standalone repo **`rschlek/brrain`** (its root is the
+plugin root: `.claude-plugin/`, `.codex-plugin/`, `skills/`, `hooks/`,
+`scripts/`, `assets/`). `plugins/brrain/` in this repo is a **git subtree
+mirror** of it, kept as a local-path marketplace source so both Claude Code and
+Codex resolve it without any external-source support.
 
-Litmus test for a setup step: **"Would this still be needed if the user only
-ever used one *other* plugin?"** Yes -> system-level -> it belongs in
-`cli-environment` (private). No -> it belongs to the capability.
+Develop brrain in `rschlek/brrain`, not here. Edits made directly under
+`plugins/brrain/` will be overwritten by the next sync.
 
-## How publishing actually works (read this once)
+## Publish a brrain release (sync the mirror)
 
-This marketplace is consumed from **GitHub** (`rschlek/rain-ai`), not from a
-local folder. The only thing that makes a change go live is a `git push`.
-Editing a file here does nothing to an installed copy until you commit and push.
+1. Land the change in `rschlek/brrain` (`main`).
+2. Here: `git pull`, then
+   `git subtree pull --prefix plugins/brrain git@github.com:rschlek/brrain.git main --squash -m "brrain: sync <short-sha>"`.
+3. `python scripts/validate.py`.
+4. Push. That push *is* the release.
 
-Claude Code decides a plugin "changed" by its **version**, resolved from the
-first of these that is set: (1) `version` in `plugin.json`, (2) `version` in the
-marketplace entry, (3) the **git commit SHA**. These plugins deliberately have
-**no `version` field**, so the commit SHA is the version. Every push is a new
-SHA, so every push is automatically a new version. **There is no version to
-bump.** Just commit and push.
+## How publishing works
+
+This marketplace is consumed from GitHub, not from a local folder: only a
+`git push` makes a change live. Claude Code resolves a plugin's version from the
+first of `plugin.json` `version`, the marketplace entry `version`, or the **git
+commit SHA**. brrain deliberately has no `version` field, so every push is a new
+version — there is nothing to bump.
 
 ## Layout
-- `.claude-plugin/marketplace.json` - catalog listing every plugin.
-- `plugins/<plugin>/skills/` - LIVE skills (auto-discovered, one level deep).
-  Each plugin is self-contained: its own `.claude-plugin/plugin.json`,
-  `skills/`, and any `references/`.
-  - `plugins/productivity/` - portable, general-purpose productivity skills.
-  - `plugins/brrain/` - the local-first second-brain knowledge loop, with its own
-    device `setup`.
-- `wip/` - gitignored scratchpad for unfinished skills. Never shipped, never
-  committed. Move a folder out to `plugins/<plugin>/skills/` when it is ready.
-- `scripts/validate.py` - pre-commit sanity check (valid JSON + frontmatter).
 
-Skills are discovered **one level deep** under a plugin's `skills/`; you cannot
-nest skill folders. To group related skills with their own references as a
-liftable unit, give them their own plugin. A skill's invocation name is
-`<plugin>:<skill-dir>` - e.g. `brrain:remember`.
-
-## Add (publish) a skill
-Skills are authored and proven in a private dev marketplace; this repo is the
-curated public storefront, so a skill arrives here by being **promoted**, not
-drafted from scratch.
-1. `git pull`.
-2. Place the skill at `plugins/<plugin>/skills/<name>/` (its `SKILL.md` plus any
-   assets), stripped of any private/work-specific content and made portable.
-   (Stage it under `wip/` first if you want it out of the tree until ready.)
-3. `python scripts/validate.py`.
-4. Commit **just that skill's paths** (not `git add -A`), then push.
-
-## Update a skill that is ALREADY live
-1. Edit it in place under `plugins/<plugin>/skills/<name>/`.
-2. `python scripts/validate.py`.
-3. Commit just that skill's paths, then push.
-
-## Remove a skill
-Delete its directory under the plugin's `skills/`, commit, push.
+- `.claude-plugin/marketplace.json` — the one-entry catalog.
+- `plugins/brrain/` — subtree mirror of `rschlek/brrain` (see above).
+- `scripts/validate.py` — sanity check (valid JSON + frontmatter). Run before
+  every commit.
+- `wip/` — gitignored scratch, never committed.
 
 ## Hard rules
-- Commit by path, never `git add -A`. The tree may carry unrelated in-flight
-  work; a publish commit must contain only what you are publishing.
-- Run `validate.py` before every commit.
-- `git pull` before authoring. This repo may be edited from multiple machines;
-  git is how they stay in sync - pull first, push when done.
-- **Public repo.** No private, personal-identifying, or work-specific content.
-  Keep skills portable (no cross-plugin or absolute-path assumptions).
+
+- Commit by path, never `git add -A`.
+- `git pull` before touching anything; this repo is edited from multiple machines.
+- Never rename the repo or the marketplace, and never remove or rename the
+  `brrain` entry — that is the no-repoint guarantee to everyone who installed it.
+- Public repo: keep it free of anything personal or work-specific.
 
 ## Consume changes after pushing
-`/plugin update <plugin>` (Claude Code), though `autoUpdate` normally pulls each
-push on its own.
+
+`/plugin update brrain` (Claude Code); `autoUpdate` normally pulls each push on
+its own.
