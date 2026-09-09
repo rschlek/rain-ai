@@ -1,7 +1,7 @@
 {
   "name": "rain-ai",
   "owner": { "name": "Rainier", "email": "rschlek@users.noreply.github.com" },
-  "description": "Public marketplace for brrain, a local-first second brain for Claude Code and Codex. brrain's home is github.com/rschlek/brrain; this repo is the install door and mirrors it.",
+  "description": "Public marketplace for brrain, a local-first second brain for Claude Code and Codex. brrain's home is github.com/rschlek/brrain; this repo is the install door and references it directly.",
   "plugins": [
     {
       "name": "brrain",
