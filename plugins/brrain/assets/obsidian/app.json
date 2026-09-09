@@ -1,8 +1,0 @@
-{
-  "promptDelete": true,
-  "strictLineBreaks": true,
-  "defaultViewMode": "preview",
-  "userIgnoreFilters": [
-    "raw/"
-  ]
-}

@@ -7,8 +7,9 @@
     {
       "name": "brrain",
       "source": {
-        "source": "local",
-        "path": "./plugins/brrain"
+        "source": "url",
+        "url": "https://github.com/rschlek/brrain.git",
+        "ref": "stable"
       },
       "policy": {
         "installation": "AVAILABLE",

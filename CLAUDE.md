@@ -1,58 +1,52 @@
 # CLAUDE.md
 
 Guidance for any Claude session working in this repo. **rain-ai** is the
-**public** install door for the `brrain` plugin — a marketplace with exactly one
-entry. People (including colleagues at work) installed brrain from
-`rschlek/rain-ai`, so this repo's name, its marketplace name, and the
+**public** install door for the `brrain` plugin - a marketplace with exactly one
+entry. People, including colleagues at work, installed brrain from
+`rschlek/rain-ai`, so this repo's name, marketplace name, and
 `brrain@rain-ai` plugin scope must never change. Nothing else lives here.
 
-**Public repo.** Nothing private, personal-identifying, or work-specific belongs
-here. Rainier's personal plugins and agents live in his private marketplace.
+**Public repo.** Nothing private, personally identifying, or work-specific
+belongs here. Personal plugins and agents live in a private marketplace.
 
-## Where brrain actually lives
+## Where brrain lives
 
-The source of truth is the standalone repo **`rschlek/brrain`** (its root is the
-plugin root: `.claude-plugin/`, `.codex-plugin/`, `skills/`, `hooks/`,
-`scripts/`, `assets/`). `plugins/brrain/` in this repo is a **git subtree
-mirror** of it, kept as a local-path marketplace source so both Claude Code and
-Codex resolve it without any external-source support.
+The source of truth is the standalone public repository `rschlek/brrain`. Its
+root is the plugin root and contains `.claude-plugin/`, `.codex-plugin/`,
+`skills/`, `hooks/`, `scripts/`, and `assets/`.
 
-Develop brrain in `rschlek/brrain`, not here. Edits made directly under
-`plugins/brrain/` will be overwritten by the next sync.
+Both marketplace catalogs in this repository reference the upstream `stable`
+branch directly. There is no embedded copy or subtree mirror. Develop, test,
+version, tag, and release brrain in `rschlek/brrain`, never here.
 
-## Publish a brrain release (sync the mirror)
+## Publish a brrain release
 
-1. Land the change in `rschlek/brrain` (`main`).
-2. Here: `git pull`, then
-   `git subtree pull --prefix plugins/brrain git@github.com:rschlek/brrain.git main --squash -m "brrain: sync <short-sha>"`.
-3. `python scripts/validate.py`.
-4. Push. That push *is* the release.
+1. Land and validate the change in `rschlek/brrain` on `main`.
+2. Bump the version in both plugin manifests.
+3. Tag the release and advance the upstream `stable` branch to that commit.
+4. Verify a fresh `brrain@rain-ai` install resolves the new upstream version.
 
-## How publishing works
-
-This marketplace is consumed from GitHub, not from a local folder: only a
-`git push` makes a change live. Claude Code resolves a plugin's version from the
-first of `plugin.json` `version`, the marketplace entry `version`, or the **git
-commit SHA**. brrain deliberately has no `version` field, so every push is a new
-version — there is nothing to bump.
+The rain-ai repository does not change for an ordinary brrain release. Change
+its catalog only when the upstream location or release-channel contract changes.
 
 ## Layout
 
-- `.claude-plugin/marketplace.json` — the one-entry catalog.
-- `plugins/brrain/` — subtree mirror of `rschlek/brrain` (see above).
-- `scripts/validate.py` — sanity check (valid JSON + frontmatter). Run before
-  every commit.
-- `wip/` — gitignored scratch, never committed.
+- `.claude-plugin/marketplace.json` - the one-entry Claude catalog.
+- `.agents/plugins/marketplace.json` - the one-entry Codex catalog.
+- `scripts/validate.py` - catalog sanity checks. Run before every commit.
+- `wip/` - gitignored scratch, never committed.
 
 ## Hard rules
 
 - Commit by path, never `git add -A`.
-- `git pull` before touching anything; this repo is edited from multiple machines.
-- Never rename the repo or the marketplace, and never remove or rename the
-  `brrain` entry — that is the no-repoint guarantee to everyone who installed it.
-- Public repo: keep it free of anything personal or work-specific.
+- Pull before touching anything; this repo is edited from multiple machines.
+- Never rename the repo or marketplace, and never remove or rename the brrain
+  entry - that is the no-repoint guarantee for existing installs.
+- Never copy the brrain source back into this repository.
+- Keep this public repository free of private, identifying, or work-specific
+  content.
 
-## Consume changes after pushing
+## Consume changes after release
 
-`/plugin update brrain` (Claude Code); `autoUpdate` normally pulls each push on
-its own.
+Run `/plugin update brrain` in Claude Code or refresh the marketplace in Codex.
+Configured automatic updates normally discover the new upstream version.

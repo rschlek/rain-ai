@@ -5,7 +5,11 @@
   "plugins": [
     {
       "name": "brrain",
-      "source": "./plugins/brrain",
+      "source": {
+        "source": "github",
+        "repo": "rschlek/brrain",
+        "ref": "stable"
+      },
       "description": "Second-brain knowledge loop over a local-first brrain knowledge base: device setup, provenance-tagged capture, trust-gated synthesis into canonical wiki pages, read-back, and consistency audit.",
       "category": "productivity"
     }
