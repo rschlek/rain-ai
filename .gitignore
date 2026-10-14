@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Claude Code local state
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+
+# Personal scratchpad for unfinished skills - never shipped, never committed.
+# Move a folder out to plugins/<plugin>/skills/ when it's ready to go live.
+wip/

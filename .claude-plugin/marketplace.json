@@ -1,0 +1,17 @@
+{
+  "name": "rain-ai",
+  "owner": { "name": "rschlek", "email": "rschlek@users.noreply.github.com" },
+  "description": "Public marketplace for brrain, a local-first second brain for Claude Code and Codex. brrain's home is github.com/rschlek/brrain; this repo is the install door and references it directly.",
+  "plugins": [
+    {
+      "name": "brrain",
+      "source": {
+        "source": "github",
+        "repo": "rschlek/brrain",
+        "ref": "stable"
+      },
+      "description": "Second-brain knowledge loop over a local-first brrain knowledge base: device setup, provenance-tagged capture, trust-gated synthesis into canonical wiki pages, read-back, and consistency audit.",
+      "category": "productivity"
+    }
+  ]
+}

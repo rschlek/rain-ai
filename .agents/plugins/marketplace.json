@@ -1,0 +1,21 @@
+{
+  "name": "rain-ai",
+  "interface": {
+    "displayName": "Rain AI"
+  },
+  "plugins": [
+    {
+      "name": "brrain",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/rschlek/brrain.git",
+        "ref": "stable"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
